@@ -76,10 +76,10 @@ if current_amount + projected_growth > goal_amount:
     projected_growth = goal_amount - current_amount
 
 # --- Dual-color 0–100% Progress Bar ---
-blue_percent = (current_amount / goal_amount) * 100 if goal_amount > 0 else 0
-green_percent = (projected_growth / goal_amount) * 100 if goal_amount > 0 else 0
+blue_percent = max(0, min((current_amount / goal_amount) * 100, 100))
+green_percent = max(0, min((projected_growth / goal_amount) * 100, 100))
 
-# Cap total at 100%
+# Cap combined at 100%
 if blue_percent + green_percent > 100:
     green_percent = 100 - blue_percent
 
@@ -87,8 +87,22 @@ st.subheader(f"{goal_name} Progress")
 
 progress_bar_html = f"""
 <div style="position: relative; width: 100%; height: 40px; background-color: #E5ECF6; border-radius: 20px; overflow: hidden;">
+    <!-- Blue: Contribution -->
     <div style="width: {blue_percent}%; height: 100%; background-color: #636EFA; border-radius: 20px 0 0 20px; box-shadow: 0 0 8px #636EFA;"></div>
-    <div style="width: {green_percent}%; height: 100%; background-color: #00CC96; position: absolute; left: {blue_percent}%; border-radius: 0 20px 20px 0; box-shadow: 0 0 8px #00CC96;"></div>
+    
+    <!-- Green: Projected Growth -->
+    <div style="
+        width: {green_percent}%; 
+        height: 100%; 
+        background-color: #00CC96; 
+        position: absolute; 
+        left: {blue_percent}%; 
+        border-radius: 0 20px 20px 0; 
+        box-shadow: 0 0 8px #00CC96;
+        display: {'block' if green_percent > 0 else 'none'};
+    "></div>
+
+    <!-- Percentage Text -->
     <div style="position: absolute; width: 100%; text-align: center; top: 50%; transform: translateY(-50%); font-weight: bold; color: black;">
         {min(blue_percent + green_percent, 100):.1f}% of Goal
     </div>
