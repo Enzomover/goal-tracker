@@ -4,7 +4,6 @@ import os
 import re
 from datetime import datetime
 import pandas as pd
-import plotly.graph_objects as go
 import plotly.express as px
 
 # --- File to store data ---
@@ -45,10 +44,15 @@ st.header("Goal Tracker")
 goal_name = st.text_input("Goal Name", data["goal_name"])
 goal_amount_input = st.text_input("Target Amount ($)", format_number(data["goal_amount"]))
 goal_amount = parse_input(goal_amount_input)
-current_amount_input = st.text_input("Current Progress ($)", format_number(data.get("current_amount",0)))
+current_amount_input = st.text_input("Current Contribution ($)", format_number(data.get("current_amount", 0)))
 current_amount = parse_input(current_amount_input)
 
-# Save goal
+growth_monthly_input = st.text_input("Expected Monthly Growth (%)", "0")
+growth_monthly = parse_input(growth_monthly_input) / 100
+
+months_to_project = st.number_input("Months to project", min_value=0, value=12)
+
+# Save button
 if st.button("💾 Save Goal Progress"):
     data["goal_name"] = goal_name
     data["goal_amount"] = goal_amount
@@ -56,64 +60,37 @@ if st.button("💾 Save Goal Progress"):
     save_data(data)
     st.success("Goal progress saved!")
 
-# ------------------- Growth Inputs -------------------
-growth_monthly_input = st.text_input("Expected Monthly Growth (%)", "0")
-growth_yearly_input = st.text_input("Expected Yearly Growth (%)", "0")
-growth_monthly = parse_input(growth_monthly_input) / 100
-growth_yearly = parse_input(growth_yearly_input) / 100
+# Calculate projected growth
+projected_growth = current_amount * ((1 + growth_monthly) ** months_to_project) - current_amount
+total_progress = min(current_amount + projected_growth, goal_amount)
 
-months_to_project = st.number_input("Months to project", min_value=1, value=12)
+# Dual progress bar
+blue_percent = int((current_amount / goal_amount) * 100) if goal_amount > 0 else 0
+green_percent = int((projected_growth / goal_amount) * 100) if goal_amount > 0 else 0
 
-# ------------------- Dual-color Progress Bar -------------------
-projected_monthly = current_amount * ((1 + growth_monthly) ** months_to_project)
+st.subheader(f"{goal_name} Progress")
 
-current = min(current_amount, goal_amount)
-growth_proj = min(projected_monthly, goal_amount)
-remaining = max(goal_amount - growth_proj, 0)
+progress_bar_html = f"""
+<div style="position: relative; width: 100%; height: 40px; background-color: #E5ECF6; border-radius: 20px; overflow: hidden;">
+    <div style="width: {blue_percent}%; height: 100%; background-color: #636EFA; border-radius: 20px; box-shadow: 0 0 10px #636EFA;"></div>
+    <div style="width: {green_percent}%; height: 100%; background-color: #00CC96; position: absolute; left: {blue_percent}%; border-radius: 20px; box-shadow: 0 0 10px #00CC96;"></div>
+    <div style="position: absolute; width: 100%; text-align: center; top: 50%; transform: translateY(-50%); font-weight: bold; color: black;">
+        ${format_number(current_amount + projected_growth)} / ${format_number(goal_amount)}
+    </div>
+</div>
+"""
 
-fig_bar = go.Figure(go.Bar(
-    x=[current, growth_proj - current, remaining],
-    y=["Progress"],
-    orientation='h',
-    marker_color=["#636EFA", "#00CC96", "#E5ECF6"],
-    hovertext=["Current Contribution", "Projected Growth", "Remaining"],
-    hoverinfo="text+x"
-))
-fig_bar.update_layout(
-    barmode='stack',
-    showlegend=False,
-    xaxis=dict(title="Goal Progress ($)", range=[0, goal_amount]),
-    height=80,
-    margin=dict(l=20, r=20, t=20, b=20)
-)
-st.subheader("Goal Progress")
-st.plotly_chart(fig_bar, use_container_width=True)
+st.markdown(progress_bar_html, unsafe_allow_html=True)
 
-# ------------------- Simplified Growth Chart -------------------
-months = list(range(1, months_to_project+1))
-monthly_growth = [current_amount * ((1 + growth_monthly) ** m) for m in months]
-yearly_growth = [current_amount * ((1 + growth_yearly) ** (m / 12)) for m in months]
-
-fig_growth = go.Figure()
-fig_growth.add_trace(go.Scatter(
-    x=months, y=monthly_growth, mode='lines+markers', name="Monthly Growth", line=dict(color="#636EFA")
-))
-fig_growth.add_trace(go.Scatter(
-    x=months, y=yearly_growth, mode='lines+markers', name="Yearly Growth", line=dict(color="#00CC96")
-))
-fig_growth.add_trace(go.Scatter(
-    x=[1, months_to_project], y=[goal_amount, goal_amount], mode='lines', name="Goal Target", line=dict(color="red", dash="dash")
-))
-fig_growth.update_layout(
-    title="Projected Goal Growth",
-    xaxis_title="Month",
-    yaxis_title="Value ($)",
-    height=350,
-    margin=dict(l=40, r=20, t=50, b=40)
-)
-st.subheader("Growth Projection")
-st.plotly_chart(fig_growth, use_container_width=True)
-st.write(f"Projected after {months_to_project} month(s): ${format_number(monthly_growth[-1])}")
+# Progress messages
+if total_progress >= goal_amount:
+    st.success("🎉 Goal reached!")
+elif total_progress >= 0.75 * goal_amount:
+    st.info("🔥 Almost there!")
+elif total_progress >= 0.5 * goal_amount:
+    st.warning("💪 Halfway done!")
+else:
+    st.write("🚀 Keep going!")
 
 # ------------------- FINANCE TRACKER -------------------
 st.header("Finance Tracker")
@@ -141,7 +118,7 @@ with st.form(key="transaction_form"):
             st.success(f"{t_type} added!")
             st.experimental_rerun()
 
-# Manage Transactions (Auto-update)
+# Manage Transactions
 if data["transactions"]:
     st.header("Manage Transactions")
     for idx, t in enumerate(data["transactions"].copy()):
@@ -203,7 +180,6 @@ if expense_transactions:
     df_expense['label'] = df_expense.apply(
         lambda row: f"{row['category']} (${format_number(row['amount'])})", axis=1
     )
-
     fig_expense_tx = px.pie(
         df_expense,
         names='label',
@@ -218,4 +194,3 @@ if expense_transactions:
         pull=[0.05]*len(df_expense)
     )
     st.plotly_chart(fig_expense_tx, use_container_width=True)
-
