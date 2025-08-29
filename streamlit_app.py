@@ -1,7 +1,6 @@
 import streamlit as st
 
 # --- Goal Tracker App ---
-
 st.set_page_config(page_title="Goal Tracker", layout="centered")
 
 st.title("🎯 Goal Tracker with Growth Projection")
@@ -10,7 +9,7 @@ st.title("🎯 Goal Tracker with Growth Projection")
 goal_name = st.text_input("Goal Name", "My Investment Goal")
 goal_amount = st.number_input("Goal Amount ($)", min_value=1, value=10000, step=100)
 
-current_amount = st.number_input("Current Contribution ($)", min_value=0, value=1000, step=100)
+current_amount = st.number_input("Current Contribution ($)", min_value=0.0, value=1000.0, step=100.0)
 
 monthly_growth_rate = st.number_input("Monthly Growth Rate (%)", min_value=0.0, value=1.0, step=0.1) / 100
 months_to_project = st.number_input("Months to Project", min_value=0, value=12, step=1)
@@ -32,22 +31,29 @@ if years_to_project > 0:
 projected_growth = max(0, projected_amount - current_amount)
 
 # --- Progress Bar Logic ---
-blue_percent = max(0, min((current_amount / goal_amount) * 100, 100))
+blue_percent = (current_amount / goal_amount) * 100 if goal_amount > 0 else 0
 total_with_growth = min(current_amount + projected_growth, goal_amount)
-green_percent = max(0, ((total_with_growth / goal_amount) * 100) - blue_percent)
+green_percent = (total_with_growth / goal_amount) * 100 - blue_percent if goal_amount > 0 else 0
 
+# Clamp values between 0 and 100
+blue_percent = max(0, min(blue_percent, 100))
+green_percent = max(0, min(green_percent, 100))
 total_percent = min(blue_percent + green_percent, 100)
 
 # --- Display Progress Bar ---
 st.subheader(f"{goal_name} Progress")
 
 progress_bar_html = f"""
-<div style="position: relative; width: 100%; height: 40px; background-color: #E5ECF6; border-radius: 20px; overflow: hidden;">
+<div style="position: relative; width: 100%; height: 40px; background-color: #E5ECF6;
+            border-radius: 20px; overflow: hidden; display: flex;">
     <!-- Blue: Contribution -->
-    <div style="width: {blue_percent}%; height: 100%; background-color: #636EFA; float: left;"></div>
+    <div style="flex: {blue_percent}; background-color: #636EFA;"></div>
     
     <!-- Green: Projected Growth -->
-    <div style="width: {green_percent}%; height: 100%; background-color: #00CC96; float: left;"></div>
+    <div style="flex: {green_percent}; background-color: #00CC96;"></div>
+    
+    <!-- Empty Space -->
+    <div style="flex: {100 - (blue_percent + green_percent)};"></div>
     
     <!-- Text -->
     <div style="position: absolute; width: 100%; text-align: center; top: 50%;
