@@ -118,4 +118,37 @@ if data["transactions"]:
     with col1:
         if st.button("Update Transaction"):
             amt_val = parse_input(new_amount)
-            if amt
+            if amt_val > 0 and new_category:
+                data["transactions"][selected_idx] = {
+                    "type": new_type,
+                    "amount": amt_val,
+                    "category": new_category,
+                    "date": new_date.strftime("%Y-%m-%d")
+                }
+                save_data(data)
+                st.success("Transaction updated!")
+    with col2:
+        if st.button("Delete Transaction"):
+            data["transactions"].pop(selected_idx)
+            save_data(data)
+            st.success("Transaction deleted!")
+
+# --- Display transactions table ---
+if data["transactions"]:
+    st.subheader("Transactions Log")
+    df = pd.DataFrame(data["transactions"])
+    df_display = df.copy()
+    df_display['amount'] = df_display['amount'].apply(format_number)
+    st.dataframe(df_display, use_container_width=True)
+
+# --- Totals and percentages ---
+total_income = sum(t['amount'] for t in data["transactions"] if t['type'] == "Income")
+total_expense = sum(t['amount'] for t in data["transactions"] if t['type'] == "Expense")
+saving_percent = (total_income - total_expense) / total_income * 100 if total_income > 0 else 0
+expense_percent = (total_expense / total_income * 100) if total_income > 0 else 0
+
+st.header("Summary")
+st.write(f"**Total Income:** ${format_number(total_income)}")
+st.write(f"**Total Expense:** ${format_number(total_expense)}")
+st.write(f"**Saving %:** {saving_percent:.2f}%")
+st.write(f"**Expense %:** {expense_percent:.2f}%")
