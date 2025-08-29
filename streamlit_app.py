@@ -47,7 +47,7 @@ current_amount = parse_input(current_amount_input)
 
 # Update current_amount based on transactions
 current_amount_from_transactions = sum(
-    t['amount'] if t['type']=='Income' else -t['amount'] for t in data["transactions"]
+    t['amount'] if t['type'] == 'Income' else -t['amount'] for t in data["transactions"]
 )
 current_amount += current_amount_from_transactions
 
@@ -77,7 +77,7 @@ with st.form(key="transaction_form"):
     t_category = st.text_input("Category (e.g., Food, Salary, Bills)")
     t_date = st.date_input("Transaction Date")
     submitted = st.form_submit_button("Add Transaction")
-    
+
     if submitted:
         amount = parse_input(t_amount)
         if amount > 0 and t_category:
@@ -95,28 +95,20 @@ with st.form(key="transaction_form"):
 # --- Edit/Delete transactions safely ---
 if data["transactions"]:
     st.header("Manage Transactions")
-    
+
     trans_list = [
-        f"{i+1}: {t['type']} | ${format_number(t['amount'])} | {t['category']} | {t['date']}" 
+        f"{i+1}: {t['type']} | ${format_number(t['amount'])} | {t['category']} | {t['date']}"
         for i, t in enumerate(data["transactions"])
     ]
-    
+
     selected_idx = st.selectbox(
         "Select a transaction to edit or delete",
         range(len(trans_list)),
         format_func=lambda x: trans_list[x]
     )
-    
-    t = data["transactions"][selected_idx]
-    
-    new_type = st.selectbox("Transaction Type", ["Income", "Expense"], index=0 if t['type']=="Income" else 1)
-    new_amount = st.text_input("Amount ($)", format_number(t['amount']))
-    new_category = st.text_input("Category", t['category'])
-    new_date = st.date_input("Transaction Date", datetime.strptime(t['date'].split()[0], "%Y-%m-%d"))
-    
-    col1, col2 = st.columns(2)
-    with col1:
-        if st.button("Update Transaction"):
-            amt_val = parse_input(new_amount)
-           if amt_val > 0 and new_category:
 
+    t = data["transactions"][selected_idx]
+
+    new_type = st.selectbox("Transaction Type", ["Income", "Expense"], index=0 if t['type'] == "Income" else 1)
+    new_amount = st.text_input("Amount ($)", format_number(t['amount']))
+    new_category = st.text_input("Category", t['category]()
