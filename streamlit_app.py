@@ -76,6 +76,7 @@ with st.form(key="transaction_form"):
     t_type = st.selectbox("Transaction Type", ["Income", "Expense"])
     t_amount = st.text_input("Amount ($)")
     t_category = st.text_input("Category (e.g., Food, Salary, Bills)")
+    t_color = st.color_picker("Choose a color for this category", "#636EFA")  # default Plotly blue
     t_date = st.date_input("Transaction Date")
     submitted = st.form_submit_button("Add Transaction")
 
@@ -86,6 +87,7 @@ with st.form(key="transaction_form"):
                 "type": t_type,
                 "amount": amount,
                 "category": t_category,
+                "color": t_color,
                 "date": t_date.strftime("%Y-%m-%d")
             })
             save_data(data)
@@ -104,6 +106,7 @@ if data["transactions"]:
                                     index=0 if t['type']=="Income" else 1, key=f"type_{idx}")
             new_amount = st.text_input("Amount ($)", format_number(t['amount']), key=f"amount_{idx}")
             new_category = st.text_input("Category", t['category'], key=f"category_{idx}")
+            new_color = st.color_picker("Choose color", t.get('color', "#636EFA"), key=f"color_{idx}")
             new_date = st.date_input("Transaction Date",
                                      datetime.strptime(t['date'].split()[0], "%Y-%m-%d"),
                                      key=f"date_{idx}")
@@ -117,6 +120,7 @@ if data["transactions"]:
                             "type": new_type,
                             "amount": amt_val,
                             "category": new_category,
+                            "color": new_color,
                             "date": new_date.strftime("%Y-%m-%d")
                         }
                         save_data(data)
@@ -129,13 +133,12 @@ if data["transactions"]:
                     save_data(data)
                     st.success("Transaction deleted!")
 
-# --- Display transactions table ---
+# --- Display transactions log with colors ---
 if data["transactions"]:
     st.subheader("Transactions Log")
-    df = pd.DataFrame(data["transactions"])
-    df_display = df.copy()
-    df_display['amount'] = df_display['amount'].apply(format_number)
-    st.dataframe(df_display, use_container_width=True)
+    for t in data["transactions"]:
+        color_box = f"<span style='display:inline-block;width:20px;height:20px;background-color:{t.get('color','#636EFA')};margin-right:10px;border-radius:3px;'></span>"
+        st.markdown(f"{color_box} **{t['type']}** | ${format_number(t['amount'])} | {t['category']} | {t['date']}", unsafe_allow_html=True)
 
 # --- Totals and percentages ---
 total_income = sum(t['amount'] for t in data["transactions"] if t['type'] == "Income")
@@ -158,8 +161,26 @@ fig_income_expense = px.pie(
 )
 st.plotly_chart(fig_income_expense, use_container_width=True)
 
-# --- Pie chart: Expenses by Category ---
+# --- Pie chart: Expenses by Category with user colors ---
 expense_categories = [t for t in data["transactions"] if t['type']=="Expense"]
 if expense_categories:
     df_expense_cat = pd.DataFrame(expense_categories)
-    fig_expense_
+    color_map = {row['category']: row['color'] for idx, row in df_expense_cat.iterrows()}
+
+    fig_expense_cat = px.pie(
+        df_expense_cat,
+        names='category',
+        values='amount',
+        title="Expenses by Category",
+        color='category',
+        color_discrete_map=color_map,
+        hole=0.4
+    )
+
+    fig_expense_cat.update_traces(
+        hoverinfo='label+percent+value',  # tooltip on hover
+        textinfo='percent+label',         # shows percent and label on chart
+        pull=[0.05]*len(df_expense_cat)   # slight pull effect
+    )
+
+    st.plotly_chart(fig_expense_cat, use_container_width=True)
