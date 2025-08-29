@@ -164,7 +164,9 @@ expense_transactions = [t for t in data["transactions"] if t['type']=="Expense"]
 
 if expense_transactions:
     df_expense = pd.DataFrame(expense_transactions)
-    df_expense['label'] = df_expense.apply(lambda row: f"{row['category']} (${format_number(row['amount'])})", axis=1)
+    df_expense['label'] = df_expense.apply(
+        lambda row: f"{row['category']} (${format_number(row['amount'])})", axis=1
+    )
 
     fig_expense_tx = px.pie(
         df_expense,
@@ -179,3 +181,7 @@ if expense_transactions:
     fig_expense_tx.update_traces(
         hoverinfo='label+percent+value',
         textinfo='percent+label',
+        pull=[0.05]*len(df_expense)
+    )
+
+    st.plotly_chart(fig_expense_tx, use_container_width=True)
