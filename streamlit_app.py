@@ -3,6 +3,7 @@ import json
 import os
 import re
 from datetime import datetime
+import pandas as pd
 
 # --- File to store data ---
 DATA_FILE = "finance_data.json"
@@ -66,15 +67,14 @@ elif progress >= 50:
 else:
     st.write("🚀 Keep going!")
 
-# --- Transactions Section ---
-st.header("Income & Expenses Tracker")
+# --- Add new transaction ---
+st.header("Add Transaction")
 
-# Add new transaction
 with st.form(key="transaction_form"):
     t_type = st.selectbox("Transaction Type", ["Income", "Expense"])
     t_amount = st.text_input("Amount ($)")
     t_category = st.text_input("Category (e.g., Food, Salary, Bills)")
-    t_date = st.date_input("Transaction Date")  # calendar picker
+    t_date = st.date_input("Transaction Date")
     submitted = st.form_submit_button("Add Transaction")
     
     if submitted:
@@ -91,40 +91,51 @@ with st.form(key="transaction_form"):
         else:
             st.error("Please enter a valid amount and category.")
 
-# --- Edit existing transaction ---
+# --- Edit or delete transactions ---
 if data["transactions"]:
-    st.subheader("Edit Transactions")
+    st.header("Manage Transactions")
+    
+    # Create a dataframe for display
+    df = pd.DataFrame(data["transactions"])
+    df_display = df.copy()
+    df_display['amount'] = df_display['amount'].apply(format_number)
+    st.dataframe(df_display, use_container_width=True)
+
     trans_list = [f"{i+1}: {t['type']} | ${format_number(t['amount'])} | {t['category']} | {t['date']}" 
                   for i, t in enumerate(data["transactions"])]
-    selected = st.selectbox("Select a transaction to edit", trans_list)
+    selected = st.selectbox("Select a transaction to edit or delete", trans_list)
 
     if selected:
         idx = trans_list.index(selected)
         t = data["transactions"][idx]
 
+        # Safely parse date
+        date_only_str = t['date'].split()[0]
+        new_date = st.date_input("Transaction Date", datetime.strptime(date_only_str, "%Y-%m-%d"))
+
         # Editable fields
         new_type = st.selectbox("Transaction Type", ["Income", "Expense"], index=0 if t['type']=="Income" else 1)
         new_amount = st.text_input("Amount ($)", format_number(t['amount']))
         new_category = st.text_input("Category", t['category'])
-        new_date = st.date_input("Transaction Date", datetime.strptime(t['date'], "%Y-%m-%d"))
 
-        if st.button("Update Transaction"):
-            amount_val = parse_input(new_amount)
-            if amount_val > 0 and new_category:
-                data["transactions"][idx] = {
-                    "type": new_type,
-                    "amount": amount_val,
-                    "category": new_category,
-                    "date": new_date.strftime("%Y-%m-%d")
-                }
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("Update Transaction"):
+                amount_val = parse_input(new_amount)
+                if amount_val > 0 and new_category:
+                    data["transactions"][idx] = {
+                        "type": new_type,
+                        "amount": amount_val,
+                        "category": new_category,
+                        "date": new_date.strftime("%Y-%m-%d")
+                    }
+                    save_data(data)
+                    st.success("Transaction updated!")
+        with col2:
+            if st.button("Delete Transaction"):
+                data["transactions"].pop(idx)
                 save_data(data)
-                st.success("Transaction updated!")
-
-# Display transactions log
-if data["transactions"]:
-    st.subheader("Transactions Log")
-    for i, t in enumerate(reversed(data["transactions"]), 1):
-        st.write(f"{i}. {t['type']} | ${format_number(t['amount'])} | {t['category']} | {t['date']}")
+                st.success("Transaction deleted!")
 
 # --- Totals and percentages ---
 total_income = sum(t['amount'] for t in data["transactions"] if t['type'] == "Income")
@@ -132,7 +143,7 @@ total_expense = sum(t['amount'] for t in data["transactions"] if t['type'] == "E
 saving_percent = (total_income - total_expense) / total_income * 100 if total_income > 0 else 0
 expense_percent = (total_expense / total_income * 100) if total_income > 0 else 0
 
-st.subheader("Summary")
+st.header("Summary")
 st.write(f"**Total Income:** ${format_number(total_income)}")
 st.write(f"**Total Expense:** ${format_number(total_expense)}")
 st.write(f"**Saving %:** {saving_percent:.2f}%")
