@@ -76,7 +76,7 @@ with st.form(key="transaction_form"):
     t_type = st.selectbox("Transaction Type", ["Income", "Expense"])
     t_amount = st.text_input("Amount ($)")
     t_category = st.text_input("Category (e.g., Food, Salary, Bills)")
-    t_color = st.color_picker("Choose a color for this category", "#636EFA")  # default Plotly blue
+    t_color = st.color_picker("Choose a color for this transaction", "#636EFA")
     t_date = st.date_input("Transaction Date")
     submitted = st.form_submit_button("Add Transaction")
 
@@ -99,7 +99,6 @@ with st.form(key="transaction_form"):
 if data["transactions"]:
     st.header("Manage Transactions")
 
-    # Iterate over a copy to safely remove items while looping
     for idx, t in enumerate(data["transactions"].copy()):
         with st.expander(f"{t['type']} | ${format_number(t['amount'])} | {t['category']} | {t['date']}"):
             new_type = st.selectbox("Transaction Type", ["Income", "Expense"],
@@ -128,12 +127,11 @@ if data["transactions"]:
 
             with col2:
                 if st.button("Delete", key=f"delete_{idx}"):
-                    # Remove transaction immediately
                     data["transactions"].pop(idx)
                     save_data(data)
                     st.success("Transaction deleted!")
 
-# --- Display transactions log with colors ---
+# --- Display transactions log with color swatch ---
 if data["transactions"]:
     st.subheader("Transactions Log")
     for t in data["transactions"]:
@@ -157,30 +155,27 @@ fig_income_expense = px.pie(
     names=["Income", "Expense"],
     values=[total_income, total_expense],
     title="Income vs Expense",
-    hole=0.4  # Donut chart
+    hole=0.4
 )
 st.plotly_chart(fig_income_expense, use_container_width=True)
 
-# --- Pie chart: Expenses by Category with user colors ---
-expense_categories = [t for t in data["transactions"] if t['type']=="Expense"]
-if expense_categories:
-    df_expense_cat = pd.DataFrame(expense_categories)
-    color_map = {row['category']: row['color'] for idx, row in df_expense_cat.iterrows()}
+# --- Pie chart: Expenses by Transaction with individual colors ---
+expense_transactions = [t for t in data["transactions"] if t['type']=="Expense"]
 
-    fig_expense_cat = px.pie(
-        df_expense_cat,
-        names='category',
+if expense_transactions:
+    df_expense = pd.DataFrame(expense_transactions)
+    df_expense['label'] = df_expense.apply(lambda row: f"{row['category']} (${format_number(row['amount'])})", axis=1)
+
+    fig_expense_tx = px.pie(
+        df_expense,
+        names='label',
         values='amount',
-        title="Expenses by Category",
-        color='category',
-        color_discrete_map=color_map,
+        title="Expenses by Transaction",
+        color='label',
+        color_discrete_sequence=df_expense['color'].tolist(),
         hole=0.4
     )
 
-    fig_expense_cat.update_traces(
-        hoverinfo='label+percent+value',  # tooltip on hover
-        textinfo='percent+label',         # shows percent and label on chart
-        pull=[0.05]*len(df_expense_cat)   # slight pull effect
-    )
-
-    st.plotly_chart(fig_expense_cat, use_container_width=True)
+    fig_expense_tx.update_traces(
+        hoverinfo='label+percent+value',
+        textinfo='percent+label',
