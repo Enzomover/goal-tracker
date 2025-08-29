@@ -20,55 +20,47 @@ def save_data(data):
 def format_number(n):
     return f"{n:,}"
 
-# --- Parse input safely ---
+# --- Remove non-digit characters ---
 def parse_input(value):
     try:
         return int(re.sub(r"[^\d]", "", value))
     except:
         return 0
 
-# --- Initialize session state ---
-if "goal_amount" not in st.session_state:
-    st.session_state.goal_amount = load_data()["goal_amount"]
-if "current_amount" not in st.session_state:
-    st.session_state.current_amount = load_data()["current_amount"]
-if "goal_name" not in st.session_state:
-    st.session_state.goal_name = load_data()["goal_name"]
-
 # --- App Title ---
 st.title("🎯 Goal Tracker")
 
+data = load_data()
+
 # --- Sidebar Inputs ---
 st.sidebar.header("Set Your Goal")
-st.session_state.goal_name = st.sidebar.text_input("Goal Name", st.session_state.goal_name)
+goal_name = st.sidebar.text_input("Goal Name", data["goal_name"])
 
-# --- Input fields with commas ---
-goal_amount_str = st.sidebar.text_input("Target Amount ($)", format_number(st.session_state.goal_amount))
-current_amount_str = st.sidebar.text_input("Current Progress ($)", format_number(st.session_state.current_amount))
-
-# --- Parse input safely ---
+# --- Dynamic comma inputs ---
+goal_amount_str = st.sidebar.text_input(
+    "Target Amount ($)", format_number(data["goal_amount"]), key="goal_amount"
+)
 goal_amount = parse_input(goal_amount_str)
-current_amount = parse_input(current_amount_str)
 
-# --- Update session state ---
-st.session_state.goal_amount = goal_amount
-st.session_state.current_amount = current_amount
+current_amount_str = st.sidebar.text_input(
+    "Current Progress ($)", format_number(data["current_amount"]), key="current_amount"
+)
+current_amount = parse_input(current_amount_str)
 
 # --- Save button ---
 if st.sidebar.button("💾 Save Progress"):
     save_data({
-        "goal_name": st.session_state.goal_name,
-        "goal_amount": st.session_state.goal_amount,
-        "current_amount": st.session_state.current_amount
+        "goal_name": goal_name,
+        "goal_amount": goal_amount,
+        "current_amount": current_amount
     })
     st.sidebar.success("Progress saved!")
 
-# --- Calculate Progress safely ---
-progress = (current_amount / goal_amount * 100) if goal_amount > 0 else 0
-progress = min(progress, 100)
+# --- Calculate Progress ---
+progress = min((current_amount / goal_amount) * 100, 100) if goal_amount > 0 else 0
 
 # --- Display Main Dashboard ---
-st.subheader(f"Tracking: {st.session_state.goal_name}")
+st.subheader(f"Tracking: {goal_name}")
 st.write(f"**Target Goal:** ${format_number(goal_amount)}")
 st.write(f"**Current Progress:** ${format_number(current_amount)}")
 st.write(f"**Completion:** {progress:.2f}%")
@@ -85,3 +77,7 @@ elif progress >= 50:
     st.warning("💪 Halfway done, great work!")
 else:
     st.write("🚀 Just getting started—keep going!")
+
+# --- Automatically update input fields with commas ---
+st.session_state.goal_amount = format_number(goal_amount)
+st.session_state.current_amount = format_number(current_amount)
