@@ -111,4 +111,11 @@ if data["transactions"]:
 
     new_type = st.selectbox("Transaction Type", ["Income", "Expense"], index=0 if t['type'] == "Income" else 1)
     new_amount = st.text_input("Amount ($)", format_number(t['amount']))
-    new_category = st.text_input("Category", t['category]()
+    new_category = st.text_input("Category", t['category'])
+    new_date = st.date_input("Transaction Date", datetime.strptime(t['date'].split()[0], "%Y-%m-%d"))
+
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("Update Transaction"):
+            amt_val = parse_input(new_amount)
+            if amt
