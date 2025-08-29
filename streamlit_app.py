@@ -92,66 +92,30 @@ with st.form(key="transaction_form"):
         else:
             st.error("Please enter a valid amount and category.")
 
-# --- Transactions log with inline Edit/Delete (three dots style) ---
+# --- Edit/Delete transactions safely ---
 if data["transactions"]:
-    st.header("Transactions Log")
+    st.header("Manage Transactions")
     
-    for idx, t in enumerate(data["transactions"]):
-        with st.expander(f"{t['type']} | ${format_number(t['amount'])} | {t['category']} | {t['date']}"):
-            action = st.selectbox("Actions", ["None", "Edit", "Delete"], key=f"action_{idx}")
-            
-            if action == "Edit":
-                # Editable fields
-                new_type = st.selectbox(
-                    "Transaction Type",
-                    ["Income", "Expense"],
-                    index=0 if t['type']=="Income" else 1,
-                    key=f"type_{idx}"
-                )
-                new_amount = st.text_input(
-                    "Amount ($)",
-                    format_number(t['amount']),
-                    key=f"amount_{idx}"
-                )
-                new_category = st.text_input(
-                    "Category",
-                    t['category'],
-                    key=f"category_{idx}"
-                )
-                new_date = st.date_input(
-                    "Transaction Date",
-                    datetime.strptime(t['date'].split()[0], "%Y-%m-%d"),
-                    key=f"date_{idx}"
-                )
-                
-                if st.button("Save Changes", key=f"save_{idx}"):
-                    amt_val = parse_input(new_amount)
-                    if amt_val > 0 and new_category:
-                        data["transactions"][idx] = {
-                            "type": new_type,
-                            "amount": amt_val,
-                            "category": new_category,
-                            "date": new_date.strftime("%Y-%m-%d")
-                        }
-                        save_data(data)
-                        st.success("Transaction updated!")
-                        st.experimental_rerun()
-            
-            elif action == "Delete":
-                if st.button("Confirm Delete", key=f"delete_{idx}"):
-                    data["transactions"].pop(idx)
-                    save_data(data)
-                    st.success("Transaction deleted!")
-                    st.experimental_rerun()
-
-# --- Totals and percentages ---
-total_income = sum(t['amount'] for t in data["transactions"] if t['type'] == "Income")
-total_expense = sum(t['amount'] for t in data["transactions"] if t['type'] == "Expense")
-saving_percent = (total_income - total_expense) / total_income * 100 if total_income > 0 else 0
-expense_percent = (total_expense / total_income * 100) if total_income > 0 else 0
-
-st.header("Summary")
-st.write(f"**Total Income:** ${format_number(total_income)}")
-st.write(f"**Total Expense:** ${format_number(total_expense)}")
-st.write(f"**Saving %:** {saving_percent:.2f}%")
-st.write(f"**Expense %:** {expense_percent:.2f}%")
+    trans_list = [
+        f"{i+1}: {t['type']} | ${format_number(t['amount'])} | {t['category']} | {t['date']}" 
+        for i, t in enumerate(data["transactions"])
+    ]
+    
+    selected_idx = st.selectbox(
+        "Select a transaction to edit or delete",
+        range(len(trans_list)),
+        format_func=lambda x: trans_list[x]
+    )
+    
+    t = data["transactions"][selected_idx]
+    
+    new_type = st.selectbox("Transaction Type", ["Income", "Expense"], index=0 if t['type']=="Income" else 1)
+    new_amount = st.text_input("Amount ($)", format_number(t['amount']))
+    new_category = st.text_input("Category", t['category'])
+    new_date = st.date_input("Transaction Date", datetime.strptime(t['date'].split()[0], "%Y-%m-%d"))
+    
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("Update Transaction"):
+            amt_val = parse_input(new_amount)
+            if amt_val > 0_
