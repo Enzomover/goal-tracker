@@ -118,4 +118,5 @@ if data["transactions"]:
     with col1:
         if st.button("Update Transaction"):
             amt_val = parse_input(new_amount)
-            if amt_val > 0_
+           if amt_val > 0 and new_category:
+
