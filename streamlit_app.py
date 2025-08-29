@@ -54,7 +54,8 @@ growth_monthly = parse_input(growth_monthly_input) / 100
 growth_yearly_input = st.text_input("Expected Yearly Growth (%)", "0")
 growth_yearly = parse_input(growth_yearly_input) / 100
 
-months_to_project = st.number_input("Months to project", min_value=0, value=12)
+months_to_project = st.number_input("Months to project", min_value=0, value=0)
+years_to_project = st.number_input("Years to project", min_value=0, value=0)
 
 # Save goal
 if st.button("💾 Save Goal Progress"):
@@ -66,7 +67,7 @@ if st.button("💾 Save Goal Progress"):
 
 # Calculate projected growth
 monthly_growth_amount = current_amount * ((1 + growth_monthly) ** months_to_project) - current_amount if months_to_project > 0 else 0
-yearly_growth_amount = current_amount * ((1 + growth_yearly) ** (months_to_project / 12)) - current_amount if growth_yearly > 0 else 0
+yearly_growth_amount = current_amount * ((1 + growth_yearly) ** years_to_project) - current_amount if years_to_project > 0 else 0
 
 projected_growth = monthly_growth_amount + yearly_growth_amount
 if projected_growth < 0:
@@ -199,12 +200,4 @@ if expense_transactions:
         names='label',
         values='amount',
         title="Expenses by Transaction",
-        hole=0.4
-    )
-    fig_expense_tx.update_traces(
-        marker=dict(colors=df_expense['color'].tolist()),
-        hoverinfo='label+percent+value',
-        textinfo='percent+label',
-        pull=[0.05]*len(df_expense)
-    )
-    st.plotly_chart(fig_expense_tx, use_container_width=True)
+        hole=
