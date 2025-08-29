@@ -1,4 +1,4 @@
-# 🎯 Goal Tracker (Streamlit + Google Sheets)
+# 🎯 Goal Tracker
 
 A free goal-tracking app built with **Streamlit** and **Google Sheets** for data storage.  
 Deployable for free on **Streamlit Cloud**.
