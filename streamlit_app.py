@@ -67,4 +67,43 @@ else:
     st.write("🚀 Keep going!")
 
 # --- Transactions Section ---
-st.header("Income & Expenses T
+st.header("Income & Expenses Tracker")
+
+with st.form(key="transaction_form"):
+    t_type = st.selectbox("Transaction Type", ["Income", "Expense"])
+    t_amount = st.text_input("Amount ($)")
+    t_category = st.text_input("Category (e.g., Food, Salary, Bills)")
+    t_date = st.date_input("Transaction Date")  # calendar picker
+    submitted = st.form_submit_button("Add Transaction")
+    
+    if submitted:
+        amount = parse_input(t_amount)
+        if amount > 0 and t_category:
+            data["transactions"].append({
+                "type": t_type,
+                "amount": amount,
+                "category": t_category,
+                "date": t_date.strftime("%Y-%m-%d")  # store selected date
+            })
+            st.success(f"{t_type} added!")
+            save_data(data)  # save immediately
+        else:
+            st.error("Please enter a valid amount and category.")
+
+# Display transactions log
+if data["transactions"]:
+    st.subheader("Transactions Log")
+    for i, t in enumerate(reversed(data["transactions"]), 1):
+        st.write(f"{i}. {t['type']} | ${format_number(t['amount'])} | {t['category']} | {t['date']}")
+
+# --- Totals and percentages ---
+total_income = sum(t['amount'] for t in data["transactions"] if t['type'] == "Income")
+total_expense = sum(t['amount'] for t in data["transactions"] if t['type'] == "Expense")
+saving_percent = (total_income - total_expense) / total_income * 100 if total_income > 0 else 0
+expense_percent = (total_expense / total_income * 100) if total_income > 0 else 0
+
+st.subheader("Summary")
+st.write(f"**Total Income:** ${format_number(total_income)}")
+st.write(f"**Total Expense:** ${format_number(total_expense)}")
+st.write(f"**Saving %:** {saving_percent:.2f}%")
+st.write(f"**Expense %:** {expense_percent:.2f}%")
