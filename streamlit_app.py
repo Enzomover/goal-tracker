@@ -92,16 +92,20 @@ with st.form(key="transaction_form"):
         else:
             st.error("Please enter a valid amount and category.")
 
-# --- Manage Transactions (expanders, inline edit/delete) ---
+# --- Manage Transactions (expanders, inline edit/delete, disappearing after deletion) ---
 if data["transactions"]:
     st.header("Manage Transactions")
 
-    for idx, t in enumerate(data["transactions"]):
+    # Iterate over a copy to safely remove items while looping
+    for idx, t in enumerate(data["transactions"].copy()):
         with st.expander(f"{t['type']} | ${format_number(t['amount'])} | {t['category']} | {t['date']}"):
-            new_type = st.selectbox("Transaction Type", ["Income", "Expense"], index=0 if t['type']=="Income" else 1, key=f"type_{idx}")
+            new_type = st.selectbox("Transaction Type", ["Income", "Expense"],
+                                    index=0 if t['type']=="Income" else 1, key=f"type_{idx}")
             new_amount = st.text_input("Amount ($)", format_number(t['amount']), key=f"amount_{idx}")
             new_category = st.text_input("Category", t['category'], key=f"category_{idx}")
-            new_date = st.date_input("Transaction Date", datetime.strptime(t['date'].split()[0], "%Y-%m-%d"), key=f"date_{idx}")
+            new_date = st.date_input("Transaction Date",
+                                     datetime.strptime(t['date'].split()[0], "%Y-%m-%d"),
+                                     key=f"date_{idx}")
 
             col1, col2 = st.columns(2)
             with col1:
@@ -119,10 +123,10 @@ if data["transactions"]:
 
             with col2:
                 if st.button("Delete", key=f"delete_{idx}"):
+                    # Remove transaction immediately
                     data["transactions"].pop(idx)
                     save_data(data)
                     st.success("Transaction deleted!")
-                    # No experimental rerun needed; Streamlit will refresh on next interaction
 
 # --- Display transactions table ---
 if data["transactions"]:
