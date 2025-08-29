@@ -199,22 +199,4 @@ st.write(f"**Saving %:** {saving_percent:.2f}%")
 st.write(f"**Expense % of Income:** {expense_percent:.2f}%")
 
 # Pie chart: Income vs Expense
-fig_income_expense = px.pie(
-    names=["Income", "Expense"],
-    values=[total_income, total_expense],
-    title="Income vs Expense",
-    hole=0.4
-)
-st.plotly_chart(fig_income_expense, use_container_width=True)
-
-# Pie chart: Expenses by transaction with individual colors
-expense_transactions = [t for t in data["transactions"] if t['type']=="Expense"]
-if expense_transactions:
-    df_expense = pd.DataFrame(expense_transactions)
-    df_expense['label'] = df_expense.apply(
-        lambda row: f"{row['category']} (${format_number(row['amount'])})", axis=1
-    )
-
-    fig_expense_tx = px.pie(
-        df_expense,
-        names='label',
+fig_income_ex
