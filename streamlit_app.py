@@ -47,12 +47,16 @@ goal_amount = parse_input(goal_amount_input)
 current_amount_input = st.text_input("Current Contribution ($)", format_number(data.get("current_amount", 0)))
 current_amount = parse_input(current_amount_input)
 
+# Growth Inputs
 growth_monthly_input = st.text_input("Expected Monthly Growth (%)", "0")
 growth_monthly = parse_input(growth_monthly_input) / 100
 
+growth_yearly_input = st.text_input("Expected Yearly Growth (%)", "0")
+growth_yearly = parse_input(growth_yearly_input) / 100
+
 months_to_project = st.number_input("Months to project", min_value=0, value=12)
 
-# Save button
+# Save goal
 if st.button("💾 Save Goal Progress"):
     data["goal_name"] = goal_name
     data["goal_amount"] = goal_amount
@@ -61,28 +65,38 @@ if st.button("💾 Save Goal Progress"):
     st.success("Goal progress saved!")
 
 # Calculate projected growth
-projected_growth = current_amount * ((1 + growth_monthly) ** months_to_project) - current_amount
-total_progress = min(current_amount + projected_growth, goal_amount)
+monthly_growth_amount = current_amount * ((1 + growth_monthly) ** months_to_project) - current_amount if months_to_project > 0 else 0
+yearly_growth_amount = current_amount * ((1 + growth_yearly) ** (months_to_project / 12)) - current_amount if growth_yearly > 0 else 0
 
-# Dual progress bar
-blue_percent = int((current_amount / goal_amount) * 100) if goal_amount > 0 else 0
-green_percent = int((projected_growth / goal_amount) * 100) if goal_amount > 0 else 0
+projected_growth = monthly_growth_amount + yearly_growth_amount
+if projected_growth < 0:
+    projected_growth = 0
+if current_amount + projected_growth > goal_amount:
+    projected_growth = goal_amount - current_amount
+
+# --- Dual-color 0–100% Progress Bar ---
+blue_percent = (current_amount / goal_amount) * 100 if goal_amount > 0 else 0
+green_percent = (projected_growth / goal_amount) * 100 if goal_amount > 0 else 0
+
+# Cap total at 100%
+if blue_percent + green_percent > 100:
+    green_percent = 100 - blue_percent
 
 st.subheader(f"{goal_name} Progress")
 
 progress_bar_html = f"""
 <div style="position: relative; width: 100%; height: 40px; background-color: #E5ECF6; border-radius: 20px; overflow: hidden;">
-    <div style="width: {blue_percent}%; height: 100%; background-color: #636EFA; border-radius: 20px; box-shadow: 0 0 10px #636EFA;"></div>
-    <div style="width: {green_percent}%; height: 100%; background-color: #00CC96; position: absolute; left: {blue_percent}%; border-radius: 20px; box-shadow: 0 0 10px #00CC96;"></div>
+    <div style="width: {blue_percent}%; height: 100%; background-color: #636EFA; border-radius: 20px 0 0 20px; box-shadow: 0 0 8px #636EFA;"></div>
+    <div style="width: {green_percent}%; height: 100%; background-color: #00CC96; position: absolute; left: {blue_percent}%; border-radius: 0 20px 20px 0; box-shadow: 0 0 8px #00CC96;"></div>
     <div style="position: absolute; width: 100%; text-align: center; top: 50%; transform: translateY(-50%); font-weight: bold; color: black;">
-        ${format_number(current_amount + projected_growth)} / ${format_number(goal_amount)}
+        {min(blue_percent + green_percent, 100):.1f}% of Goal
     </div>
 </div>
 """
-
 st.markdown(progress_bar_html, unsafe_allow_html=True)
 
 # Progress messages
+total_progress = current_amount + projected_growth
 if total_progress >= goal_amount:
     st.success("🎉 Goal reached!")
 elif total_progress >= 0.75 * goal_amount:
@@ -145,7 +159,7 @@ if data["transactions"]:
                 save_data(data)
                 st.experimental_rerun()
 
-# Display transaction log with color swatch
+# Display transaction log
 if data["transactions"]:
     st.subheader("Transactions Log")
     for t in data["transactions"]:
@@ -173,7 +187,7 @@ fig_income_expense = px.pie(
 )
 st.plotly_chart(fig_income_expense, use_container_width=True)
 
-# Pie chart: Expenses by transaction with individual colors
+# Pie chart: Expenses by transaction with colors
 expense_transactions = [t for t in data["transactions"] if t['type']=="Expense"]
 if expense_transactions:
     df_expense = pd.DataFrame(expense_transactions)
