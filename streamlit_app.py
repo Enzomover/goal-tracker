@@ -16,7 +16,6 @@ def load_data():
     return {
         "goal_name": "Retirement Fund",
         "goal_amount": 50000,
-        "current_amount": 5000,
         "transactions": []
     }
 
@@ -43,14 +42,11 @@ st.header("Goal Tracker")
 goal_name = st.text_input("Goal Name", data["goal_name"])
 goal_amount_input = st.text_input("Target Amount ($)", format_number(data["goal_amount"]))
 goal_amount = parse_input(goal_amount_input)
-current_amount_input = st.text_input("Current Progress ($)", format_number(data["current_amount"]))
-current_amount = parse_input(current_amount_input)
 
-# Update current_amount based on transactions
-current_amount_from_transactions = sum(
+# --- Current Progress calculated from transactions ---
+current_amount = sum(
     t['amount'] if t['type'] == 'Income' else -t['amount'] for t in data["transactions"]
 )
-current_amount += current_amount_from_transactions
 
 progress = min((current_amount / goal_amount) * 100, 100) if goal_amount > 0 else 0
 
