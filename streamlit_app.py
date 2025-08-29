@@ -69,4 +69,18 @@ progress = min((st.session_state.current_amount / st.session_state.goal_amount) 
 # --- Display Main Dashboard ---
 st.subheader(f"Tracking: {st.session_state.goal_name}")
 st.write(f"**Target Goal:** ${format_number(st.session_state.goal_amount)}")
-st.write(f"**Current Progress:** ${format_n_
+st.write(f"**Current Progress:** ${format_number(st.session_state.current_amount)}")
+st.write(f"**Completion:** {progress:.2f}%")
+
+# --- Single Smooth Progress Bar ---
+st.progress(progress / 100)
+
+# --- Motivational Message ---
+if progress >= 100:
+    st.success("🎉 Congratulations! You reached your goal!")
+elif progress >= 75:
+    st.info("🔥 Almost there, keep pushing!")
+elif progress >= 50:
+    st.warning("💪 Halfway done, great work!")
+else:
+    st.write("🚀 Just getting started—keep going!")
