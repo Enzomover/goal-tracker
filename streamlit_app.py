@@ -168,17 +168,18 @@ if expense_transactions:
         lambda row: f"{row['category']} (${format_number(row['amount'])})", axis=1
     )
 
+    # Create pie chart without color argument
     fig_expense_tx = px.pie(
         df_expense,
         names='label',
         values='amount',
         title="Expenses by Transaction",
-        color='label',
-        color_discrete_sequence=df_expense['color'].tolist(),
         hole=0.4
     )
 
+    # Assign user-selected colors directly
     fig_expense_tx.update_traces(
+        marker=dict(colors=df_expense['color'].tolist()),
         hoverinfo='label+percent+value',
         textinfo='percent+label',
         pull=[0.05]*len(df_expense)
