@@ -4,6 +4,7 @@ import os
 import re
 from datetime import datetime
 import pandas as pd
+import plotly.express as px
 
 # --- File to store data ---
 DATA_FILE = "finance_data.json"
@@ -92,7 +93,7 @@ with st.form(key="transaction_form"):
         else:
             st.error("Please enter a valid amount and category.")
 
-# --- Manage Transactions (expanders, inline edit/delete, disappearing after deletion) ---
+# --- Manage Transactions (expanders, inline edit/delete) ---
 if data["transactions"]:
     st.header("Manage Transactions")
 
@@ -146,4 +147,19 @@ st.header("Summary")
 st.write(f"**Total Income:** ${format_number(total_income)}")
 st.write(f"**Total Expense:** ${format_number(total_expense)}")
 st.write(f"**Saving %:** {saving_percent:.2f}%")
-st.write(f"**Expense %:** {expense_percent:.2f}%")
+st.write(f"**Expense % of Income:** {expense_percent:.2f}%")
+
+# --- Pie chart: Income vs Expense ---
+fig_income_expense = px.pie(
+    names=["Income", "Expense"],
+    values=[total_income, total_expense],
+    title="Income vs Expense",
+    hole=0.4  # Donut chart
+)
+st.plotly_chart(fig_income_expense, use_container_width=True)
+
+# --- Pie chart: Expenses by Category ---
+expense_categories = [t for t in data["transactions"] if t['type']=="Expense"]
+if expense_categories:
+    df_expense_cat = pd.DataFrame(expense_categories)
+    fig_expense_
