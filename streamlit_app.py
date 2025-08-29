@@ -35,7 +35,6 @@ data = load_data()
 st.sidebar.header("Set Your Goal")
 goal_name = st.sidebar.text_input("Goal Name", data["goal_name"])
 
-# Inputs with commas that update dynamically
 goal_amount_input = st.sidebar.text_input("Target Amount ($)", format_number(data["goal_amount"]))
 goal_amount = parse_input(goal_amount_input)
 
@@ -60,15 +59,8 @@ st.write(f"**Target Goal:** ${format_number(goal_amount)}")
 st.write(f"**Current Progress:** ${format_number(current_amount)}")
 st.write(f"**Completion:** {progress:.2f}%")
 
-# --- Detailed Progress Bar ---
-# Show milestones at 25%, 50%, 75%, 100%
-milestones = [25, 50, 75, 100]
-for milestone in milestones:
-    if progress >= milestone:
-        st.progress(1.0)  # full bar for milestone reached
-    else:
-        st.progress(progress / 100)  # current progress bar
-        break
+# --- Single Smooth Progress Bar ---
+st.progress(progress / 100)
 
 # --- Motivational Message ---
 if progress >= 100:
