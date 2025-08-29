@@ -1,6 +1,7 @@
 import streamlit as st
 import json
 import os
+import re
 
 # --- File to store data ---
 DATA_FILE = "goal_data.json"
@@ -19,10 +20,10 @@ def save_data(data):
 def format_number(n):
     return f"{n:,}"
 
-# --- Parse input removing commas ---
+# --- Remove non-digit characters ---
 def parse_input(value):
     try:
-        return int(value.replace(",", ""))
+        return int(re.sub(r"[^\d]", "", value))
     except:
         return 0
 
@@ -35,11 +36,16 @@ data = load_data()
 st.sidebar.header("Set Your Goal")
 goal_name = st.sidebar.text_input("Goal Name", data["goal_name"])
 
-goal_amount_input = st.sidebar.text_input("Target Amount ($)", format_number(data["goal_amount"]))
-goal_amount = parse_input(goal_amount_input)
+# --- Dynamic comma inputs ---
+goal_amount_str = st.sidebar.text_input(
+    "Target Amount ($)", format_number(data["goal_amount"]), key="goal_amount"
+)
+goal_amount = parse_input(goal_amount_str)
 
-current_amount_input = st.sidebar.text_input("Current Progress ($)", format_number(data["current_amount"]))
-current_amount = parse_input(current_amount_input)
+current_amount_str = st.sidebar.text_input(
+    "Current Progress ($)", format_number(data["current_amount"]), key="current_amount"
+)
+current_amount = parse_input(current_amount_str)
 
 # --- Save button ---
 if st.sidebar.button("💾 Save Progress"):
@@ -71,3 +77,7 @@ elif progress >= 50:
     st.warning("💪 Halfway done, great work!")
 else:
     st.write("🚀 Just getting started—keep going!")
+
+# --- Automatically update input fields with commas ---
+st.session_state.goal_amount = format_number(goal_amount)
+st.session_state.current_amount = format_number(current_amount)
