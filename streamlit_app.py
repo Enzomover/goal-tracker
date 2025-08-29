@@ -69,6 +69,7 @@ else:
 # --- Transactions Section ---
 st.header("Income & Expenses Tracker")
 
+# Add new transaction
 with st.form(key="transaction_form"):
     t_type = st.selectbox("Transaction Type", ["Income", "Expense"])
     t_amount = st.text_input("Amount ($)")
@@ -83,12 +84,41 @@ with st.form(key="transaction_form"):
                 "type": t_type,
                 "amount": amount,
                 "category": t_category,
-                "date": t_date.strftime("%Y-%m-%d")  # store selected date
+                "date": t_date.strftime("%Y-%m-%d")
             })
             st.success(f"{t_type} added!")
-            save_data(data)  # save immediately
+            save_data(data)
         else:
             st.error("Please enter a valid amount and category.")
+
+# --- Edit existing transaction ---
+if data["transactions"]:
+    st.subheader("Edit Transactions")
+    trans_list = [f"{i+1}: {t['type']} | ${format_number(t['amount'])} | {t['category']} | {t['date']}" 
+                  for i, t in enumerate(data["transactions"])]
+    selected = st.selectbox("Select a transaction to edit", trans_list)
+
+    if selected:
+        idx = trans_list.index(selected)
+        t = data["transactions"][idx]
+
+        # Editable fields
+        new_type = st.selectbox("Transaction Type", ["Income", "Expense"], index=0 if t['type']=="Income" else 1)
+        new_amount = st.text_input("Amount ($)", format_number(t['amount']))
+        new_category = st.text_input("Category", t['category'])
+        new_date = st.date_input("Transaction Date", datetime.strptime(t['date'], "%Y-%m-%d"))
+
+        if st.button("Update Transaction"):
+            amount_val = parse_input(new_amount)
+            if amount_val > 0 and new_category:
+                data["transactions"][idx] = {
+                    "type": new_type,
+                    "amount": amount_val,
+                    "category": new_category,
+                    "date": new_date.strftime("%Y-%m-%d")
+                }
+                save_data(data)
+                st.success("Transaction updated!")
 
 # Display transactions log
 if data["transactions"]:
