@@ -38,7 +38,7 @@ data = load_data()
 
 st.title("🎯 Goal & Finance Tracker")
 
-# --- GOAL TRACKER (Manual only) ---
+# --- GOAL TRACKER ---
 st.header("Goal Tracker")
 
 goal_name = st.text_input("Goal Name", data["goal_name"])
@@ -71,7 +71,36 @@ elif progress >= 50:
 else:
     st.write("🚀 Keep going!")
 
-# --- FINANCE TRACKER (Independent) ---
+# --- GOAL TRACKER: Growth ---
+st.subheader("📈 Investment Growth Projections")
+
+growth_monthly_input = st.text_input("Expected Monthly Growth (%)", "0")
+growth_yearly_input = st.text_input("Expected Yearly Growth (%)", "0")
+growth_monthly = parse_input(growth_monthly_input) / 100
+growth_yearly = parse_input(growth_yearly_input) / 100
+
+months_to_project = st.number_input("Months to project", min_value=1, value=12)
+years_to_project = st.number_input("Years to project", min_value=1, value=5)
+
+# --- Monthly projection ---
+monthly_values = [current_amount * ((1 + growth_monthly) ** m) for m in range(1, months_to_project+1)]
+
+# --- Yearly projection converted to months ---
+yearly_values = [current_amount * ((1 + growth_yearly) ** (m / 12)) for m in range(1, years_to_project*12 + 1)]
+
+# --- Combined DataFrame ---
+df_growth = pd.DataFrame({
+    "Month": list(range(1, months_to_project+1)) + list(range(1, years_to_project*12+1)),
+    "Monthly Growth": monthly_values + [None]*len(yearly_values),
+    "Yearly Growth": [None]*len(monthly_values) + yearly_values
+})
+
+st.line_chart(df_growth.set_index("Month"))
+
+st.write(f"Projected after {months_to_project} month(s): ${format_number(monthly_values[-1])}")
+st.write(f"Projected after {years_to_project} year(s): ${format_number(yearly_values[-1])}")
+
+# --- FINANCE TRACKER ---
 st.header("Finance Tracker")
 
 # Add Transaction
@@ -95,10 +124,9 @@ with st.form(key="transaction_form"):
             })
             save_data(data)
             st.success(f"{t_type} added!")
-        else:
-            st.error("Please enter a valid amount and category.")
+            st.experimental_rerun()
 
-# Manage Transactions
+# Manage Transactions (Auto-update)
 if data["transactions"]:
     st.header("Manage Transactions")
     for idx, t in enumerate(data["transactions"].copy()):
@@ -112,26 +140,19 @@ if data["transactions"]:
                                      datetime.strptime(t['date'].split()[0], "%Y-%m-%d"),
                                      key=f"date_{idx}")
 
-            col1, col2 = st.columns(2)
-            with col1:
-                if st.button("Update", key=f"update_{idx}"):
-                    amt_val = parse_input(new_amount)
-                    if amt_val > 0 and new_category:
-                        data["transactions"][idx] = {
-                            "type": new_type,
-                            "amount": amt_val,
-                            "category": new_category,
-                            "color": new_color,
-                            "date": new_date.strftime("%Y-%m-%d")
-                        }
-                        save_data(data)
-                        st.success("Transaction updated!")
-
-            with col2:
-                if st.button("Delete", key=f"delete_{idx}"):
-                    data["transactions"].pop(idx)
-                    save_data(data)
-                    st.success("Transaction deleted!")
+            # Auto-update on change
+            amt_val = parse_input(new_amount)
+            updated_tx = {
+                "type": new_type,
+                "amount": amt_val,
+                "category": new_category,
+                "color": new_color,
+                "date": new_date.strftime("%Y-%m-%d")
+            }
+            if updated_tx != t:
+                data["transactions"][idx] = updated_tx
+                save_data(data)
+                st.experimental_rerun()
 
 # Display transaction log with color swatch
 if data["transactions"]:
