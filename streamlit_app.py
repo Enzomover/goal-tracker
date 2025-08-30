@@ -86,16 +86,16 @@ with goal_col2:
     total_percent = min((future_value/goal_amount)*100,100) if goal_amount>0 else 0
 
     st.markdown(f"""
-    <div style='background:#F9FAFB; padding:20px; border-radius:15px; box-shadow:0 4px 12px rgba(0,0,0,0.05);'>
-        <h3 style='margin-bottom:10px;'>{st.session_state.goal_name}</h3>
-        <p>Target Goal: <b>${format_number(goal_amount)}</b></p>
-        <p>Current Amount: <b>${format_number(current_amount)}</b></p>
-        <p>Contribution %: <b>{contrib_percent:.2f}%</b></p>
-        <p>Growth %: <b>{growth_percent:.2f}%</b></p>
-        <p>Total % toward goal: <b>{total_percent:.2f}%</b></p>
-        <p>Total Projected Amount: <b>${format_number(future_value)}</b></p>
-    </div>
-    """, unsafe_allow_html=True)
+<div style='background:#F9FAFB; padding:20px; border-radius:15px; box-shadow:0 4px 12px rgba(0,0,0,0.05);'>
+    <h3 style='margin-bottom:10px;'>{st.session_state.goal_name}</h3>
+    <p>Target Goal: <b>${format_number(goal_amount)}</b></p>
+    <p>Current Amount: <b>${format_number(current_amount)}</b></p>
+    <p>Contribution %: <b>{contrib_percent:.2f}%</b></p>
+    <p>Growth %: <b>{growth_percent:.2f}%</b></p>
+    <p>Total % toward goal: <b>{total_percent:.2f}%</b></p>
+    <p>Total Projected Amount: <b>${format_number(future_value)}</b></p>
+</div>
+""", unsafe_allow_html=True)
 
     st.progress(total_percent / 100)
 
@@ -149,4 +149,34 @@ if data["transactions"]:
     st.subheader("📋 Transactions")
     for t in data["transactions"]:
         st.markdown(f"""
-        <div
+<div style='background:{t.get('color','#F3F4F6')}; padding:15px; border-radius:10px; margin-bottom:8px; box-shadow:0 2px 8px rgba(0,0,0,0.05);'>
+    <b>{t['type']}</b> | ${format_number(t['amount'])} | {t['category']} | {t['date']}
+</div>
+""", unsafe_allow_html=True)
+
+total_income = sum(t['amount'] for t in data["transactions"] if t['type']=="Income")
+total_expense = sum(t['amount'] for t in data["transactions"] if t['type']=="Expense")
+saving_percent = (total_income - total_expense)/total_income*100 if total_income>0 else 0
+expense_percent = (total_expense / total_income * 100) if total_income>0 else 0
+
+st.subheader("📊 Summary")
+col_income, col_expense = st.columns(2)
+with col_income:
+    st.metric("Total Income", f"${format_number(total_income)}")
+    st.metric("Total Savings %", f"{saving_percent:.2f}%")
+with col_expense:
+    st.metric("Total Expense", f"${format_number(total_expense)}")
+    st.metric("Expense % of Income", f"{expense_percent:.2f}%")
+
+fig_income_expense = px.pie(
+    names=["Income","Expense"],
+    values=[total_income,total_expense],
+    title="Income vs Expense",
+    hole=0.4
+)
+st.plotly_chart(fig_income_expense, use_container_width=True)
+
+expense_transactions = [t for t in data["transactions"] if t['type']=="Expense"]
+if expense_transactions:
+    df_exp = pd.DataFrame(expense_transactions).reset_index(drop=True)
+    df_exp['label'] = df_exp.apply(lambda
