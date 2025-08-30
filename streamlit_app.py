@@ -34,33 +34,24 @@ def parse_input(value):
 st.markdown(
     """
     <style>
-    /* Main background and text */
     body, .main, .stApp {
         background-color: #0E1117 !important;
         color: #FFFFFF !important;
     }
-
-    /* Text inputs and number inputs */
     .stTextInput input, .stNumberInput input {
         background-color: #1C1F26 !important;
         color: #FFFFFF !important;
         border: 1px solid #333;
     }
-
-    /* Progress bar background */
     .stProgress > div > div {
         background-color: #333 !important;
         border-radius: 20px;
     }
-
-    /* Card styling */
     .stCard {
         background-color: #1C1F26 !important;
         box-shadow: none !important;
         color: #FFFFFF !important;
     }
-
-    /* Hide Streamlit theme toggle */
     [data-testid="stThemeToggle"] {
         display: none;
     }
@@ -113,15 +104,15 @@ total_value = current_amount + expected_growth_value
 # ---------------- Custom Progress Bar ----------------
 st.subheader(f"📊 Tracking: {data['goal_name']}")
 
-# Bright colors for dark mode
+# Dynamic color for dark mode
 if progress >= 100:
-    bar_color = "#4CAF50"  # Green
+    bar_color = "#4CAF50"
 elif progress >= 75:
-    bar_color = "#FFC107"  # Amber
+    bar_color = "#FFC107"
 elif progress >= 50:
-    bar_color = "#2196F3"  # Blue
+    bar_color = "#2196F3"
 else:
-    bar_color = "#FF5252"  # Red
+    bar_color = "#FF5252"
 
 st.markdown(
     f"""
@@ -142,7 +133,6 @@ st.write(f"**Current Contributions:** ${format_number(current_amount)}")
 st.write(f"**Expected Yearly Growth:** {growth_percent:.2f}% → ${format_number(expected_growth_value)}")
 st.write(f"**Total Value (with growth):** ${format_number(total_value)}")
 
-# Progress feedback
 if progress >= 100:
     st.success("🎉 Goal reached!")
 elif progress >= 75:
