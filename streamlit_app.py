@@ -30,25 +30,37 @@ def parse_input(value):
     except:
         return 0
 
-# ---------------- Force Light Theme ----------------
+# ---------------- Force Dark Theme ----------------
 st.markdown(
     """
     <style>
+    /* Main background and text */
     body, .main, .stApp {
-        background-color: #fafafa !important;
-        color: #000000 !important;
+        background-color: #0E1117 !important;
+        color: #FFFFFF !important;
     }
+
+    /* Text inputs and number inputs */
     .stTextInput input, .stNumberInput input {
-        background-color: #ffffff !important;
-        color: #000000 !important;
+        background-color: #1C1F26 !important;
+        color: #FFFFFF !important;
+        border: 1px solid #333;
     }
+
+    /* Progress bar background */
     .stProgress > div > div {
-        background-color: #e0e0e0 !important;
+        background-color: #333 !important;
         border-radius: 20px;
     }
+
+    /* Card styling */
     .stCard {
+        background-color: #1C1F26 !important;
         box-shadow: none !important;
+        color: #FFFFFF !important;
     }
+
+    /* Hide Streamlit theme toggle */
     [data-testid="stThemeToggle"] {
         display: none;
     }
@@ -101,7 +113,7 @@ total_value = current_amount + expected_growth_value
 # ---------------- Custom Progress Bar ----------------
 st.subheader(f"📊 Tracking: {data['goal_name']}")
 
-# Dynamic bar color based on progress
+# Bright colors for dark mode
 if progress >= 100:
     bar_color = "#4CAF50"  # Green
 elif progress >= 75:
@@ -109,11 +121,11 @@ elif progress >= 75:
 elif progress >= 50:
     bar_color = "#2196F3"  # Blue
 else:
-    bar_color = "#F44336"  # Red
+    bar_color = "#FF5252"  # Red
 
 st.markdown(
     f"""
-    <div style="width:100%; background:#ddd; border-radius:30px; padding:3px; margin:15px 0;">
+    <div style="width:100%; background:#333; border-radius:30px; padding:3px; margin:15px 0;">
         <div style="width:{progress}%; background:{bar_color};
                     height:28px; border-radius:30px; text-align:center; 
                     color:white; font-weight:bold; line-height:28px;">
