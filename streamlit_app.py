@@ -16,7 +16,7 @@ def load_data():
     return {
         "goal_name": "Retirement Fund",
         "goal_amount": 50000,
-        "current_amount": 0,
+        "current_amount": 5000,
         "transactions": []
     }
 
@@ -38,30 +38,29 @@ data = load_data()
 
 st.title("🎯 Goal & Finance Tracker")
 
-# --- GOAL TRACKER (Manual only) ---
+# --- Goal Tracker ---
 st.header("Goal Tracker")
-
 goal_name = st.text_input("Goal Name", data["goal_name"])
 goal_amount_input = st.text_input("Target Amount ($)", format_number(data["goal_amount"]))
 goal_amount = parse_input(goal_amount_input)
-current_amount_input = st.text_input("Current Progress ($)", format_number(data.get("current_amount",0)))
+current_amount_input = st.text_input("Current Progress ($)", format_number(data["current_amount"]))
 current_amount = parse_input(current_amount_input)
 
-# Save button
-if st.button("💾 Save Goal Progress"):
-    data["goal_name"] = goal_name
-    data["goal_amount"] = goal_amount
-    data["current_amount"] = current_amount
-    save_data(data)
-    st.success("Goal progress saved!")
+# Update current_amount based on transactions
+current_amount_from_transactions = sum(
+    t['amount'] if t['type'] == 'Income' else -t['amount'] for t in data["transactions"]
+)
+current_amount += current_amount_from_transactions
 
 progress = min((current_amount / goal_amount) * 100, 100) if goal_amount > 0 else 0
+
 st.subheader(f"Tracking: {goal_name}")
 st.write(f"**Target Goal:** ${format_number(goal_amount)}")
 st.write(f"**Current Progress:** ${format_number(current_amount)}")
 st.write(f"**Completion:** {progress:.2f}%")
 st.progress(progress / 100)
 
+# Motivational message
 if progress >= 100:
     st.success("🎉 Goal reached!")
 elif progress >= 75:
@@ -71,10 +70,8 @@ elif progress >= 50:
 else:
     st.write("🚀 Keep going!")
 
-# --- FINANCE TRACKER (Independent) ---
-st.header("Finance Tracker")
-
-# Add Transaction
+# --- Add new transaction ---
+st.header("Add Transaction")
 with st.form(key="transaction_form"):
     t_type = st.selectbox("Transaction Type", ["Income", "Expense"])
     t_amount = st.text_input("Amount ($)")
@@ -98,9 +95,10 @@ with st.form(key="transaction_form"):
         else:
             st.error("Please enter a valid amount and category.")
 
-# Manage Transactions
+# --- Manage Transactions (expanders, inline edit/delete) ---
 if data["transactions"]:
     st.header("Manage Transactions")
+
     for idx, t in enumerate(data["transactions"].copy()):
         with st.expander(f"{t['type']} | ${format_number(t['amount'])} | {t['category']} | {t['date']}"):
             new_type = st.selectbox("Transaction Type", ["Income", "Expense"],
@@ -133,14 +131,14 @@ if data["transactions"]:
                     save_data(data)
                     st.success("Transaction deleted!")
 
-# Display transaction log with color swatch
+# --- Display transactions log with color swatch ---
 if data["transactions"]:
     st.subheader("Transactions Log")
     for t in data["transactions"]:
         color_box = f"<span style='display:inline-block;width:20px;height:20px;background-color:{t.get('color','#636EFA')};margin-right:10px;border-radius:3px;'></span>"
         st.markdown(f"{color_box} **{t['type']}** | ${format_number(t['amount'])} | {t['category']} | {t['date']}", unsafe_allow_html=True)
 
-# Totals and percentages
+# --- Totals and percentages ---
 total_income = sum(t['amount'] for t in data["transactions"] if t['type'] == "Income")
 total_expense = sum(t['amount'] for t in data["transactions"] if t['type'] == "Expense")
 saving_percent = (total_income - total_expense) / total_income * 100 if total_income > 0 else 0
@@ -152,7 +150,7 @@ st.write(f"**Total Expense:** ${format_number(total_expense)}")
 st.write(f"**Saving %:** {saving_percent:.2f}%")
 st.write(f"**Expense % of Income:** {expense_percent:.2f}%")
 
-# Pie chart: Income vs Expense
+# --- Pie chart: Income vs Expense ---
 fig_income_expense = px.pie(
     names=["Income", "Expense"],
     values=[total_income, total_expense],
@@ -161,24 +159,24 @@ fig_income_expense = px.pie(
 )
 st.plotly_chart(fig_income_expense, use_container_width=True)
 
-# Pie chart: Expenses by transaction with individual colors
+# --- Pie chart: Expenses by Transaction with individual colors ---
 expense_transactions = [t for t in data["transactions"] if t['type']=="Expense"]
+
 if expense_transactions:
     df_expense = pd.DataFrame(expense_transactions)
-    df_expense['label'] = df_expense.apply(
-        lambda row: f"{row['category']} (${format_number(row['amount'])})", axis=1
-    )
+    df_expense['label'] = df_expense.apply(lambda row: f"{row['category']} (${format_number(row['amount'])})", axis=1)
 
     fig_expense_tx = px.pie(
         df_expense,
         names='label',
         values='amount',
         title="Expenses by Transaction",
+        color='label',
+        color_discrete_sequence=df_expense['color'].tolist(),
         hole=0.4
     )
 
     fig_expense_tx.update_traces(
-        marker=dict(colors=df_expense['color'].tolist()),
         hoverinfo='label+percent+value',
         textinfo='percent+label',
         pull=[0.05]*len(df_expense)
