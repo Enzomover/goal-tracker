@@ -17,6 +17,11 @@ def load_data():
         "goal_name": "Retirement Fund",
         "goal_amount": 50000,
         "current_amount": 0,
+        "monthly_contribution": 0,
+        "yearly_contribution": 0,
+        "years_to_project": 0,
+        "months_to_project": 0,
+        "growth_rate": 0.0,
         "transactions": []
     }
 
@@ -25,7 +30,7 @@ def save_data(data):
         json.dump(data, f)
 
 def format_number(n):
-    return f"{n:,}"
+    return f"{n:,.2f}"
 
 def parse_input(value):
     try:
@@ -38,32 +43,58 @@ data = load_data()
 
 st.title("🎯 Goal & Finance Tracker")
 
-# --- GOAL TRACKER (Manual only) ---
+# --- GOAL TRACKER ---
 st.header("Goal Tracker")
 
-goal_name = st.text_input("Goal Name", data["goal_name"])
-goal_amount_input = st.text_input("Target Amount ($)", format_number(data["goal_amount"]))
+goal_name = st.text_input("Goal Name", data.get("goal_name", ""))
+goal_amount_input = st.text_input("Target Amount ($)", format_number(data.get("goal_amount", 0)))
 goal_amount = parse_input(goal_amount_input)
-current_amount_input = st.text_input("Current Progress ($)", format_number(data.get("current_amount",0)))
+current_amount_input = st.text_input("Current Progress ($)", format_number(data.get("current_amount", 0)))
 current_amount = parse_input(current_amount_input)
+
+monthly_contribution = st.number_input("Monthly Contribution ($)", value=data.get("monthly_contribution", 0.0), step=100.0)
+yearly_contribution = st.number_input("Yearly Contribution ($)", value=data.get("yearly_contribution", 0.0), step=100.0)
+years_to_project = st.number_input("Years to Project", value=data.get("years_to_project", 0), step=1, min_value=0)
+months_to_project = st.number_input("Months to Project", value=data.get("months_to_project", 0), step=1, min_value=0)
+growth_rate = st.number_input("Expected Growth Rate (%)", value=data.get("growth_rate", 0.0), step=0.1)
 
 # Save button
 if st.button("💾 Save Goal Progress"):
-    data["goal_name"] = goal_name
-    data["goal_amount"] = goal_amount
-    data["current_amount"] = current_amount
+    data.update({
+        "goal_name": goal_name,
+        "goal_amount": goal_amount,
+        "current_amount": current_amount,
+        "monthly_contribution": monthly_contribution,
+        "yearly_contribution": yearly_contribution,
+        "years_to_project": years_to_project,
+        "months_to_project": months_to_project,
+        "growth_rate": growth_rate,
+    })
     save_data(data)
     st.success("Goal progress saved!")
 
-progress = min((current_amount / goal_amount) * 100, 100) if goal_amount > 0 else 0
+# --- Projection Calculation ---
+total_months = years_to_project * 12 + months_to_project
+future_value = current_amount
+
+for _ in range(total_months):
+    future_value += monthly_contribution
+    if yearly_contribution > 0 and (_ + 1) % 12 == 0:
+        future_value += yearly_contribution
+    if growth_rate > 0:
+        future_value *= (1 + growth_rate / 100 / 12)
+
+progress = min((future_value / goal_amount) * 100, 100) if goal_amount > 0 else 0
+
 st.subheader(f"Tracking: {goal_name}")
 st.write(f"**Target Goal:** ${format_number(goal_amount)}")
-st.write(f"**Current Progress:** ${format_number(current_amount)}")
+st.write(f"**Current Amount:** ${format_number(current_amount)}")
+st.write(f"**Projected Value ({years_to_project}y {months_to_project}m):** ${format_number(future_value)}")
 st.write(f"**Completion:** {progress:.2f}%")
 st.progress(progress / 100)
 
 if progress >= 100:
-    st.success("🎉 Goal reached!")
+    st.success("🎉 Goal reached or projected to reach!")
 elif progress >= 75:
     st.info("🔥 Almost there!")
 elif progress >= 50:
@@ -71,7 +102,7 @@ elif progress >= 50:
 else:
     st.write("🚀 Keep going!")
 
-# --- FINANCE TRACKER (Independent) ---
+# --- FINANCE TRACKER ---
 st.header("Finance Tracker")
 
 # Add Transaction
