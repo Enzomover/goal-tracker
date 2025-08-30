@@ -17,6 +17,10 @@ def load_data():
         "goal_name": "Retirement Fund",
         "goal_amount": 50000,
         "current_amount": 0,
+        "monthly_contribution": 0.0,
+        "yearly_contribution": 0.0,
+        "growth_rate": 5.0,
+        "years_to_project": 10,
         "transactions": []
     }
 
@@ -37,25 +41,4 @@ def parse_input(value):
 data = load_data()
 
 # --- Page Config ---
-st.set_page_config(
-    page_title="🎯 Goal & Finance Tracker",
-    layout="wide",
-    initial_sidebar_state="expanded"
-)
-
-# --- Page Header ---
-st.markdown("""
-# 🎯 Goal & Finance Tracker
-Modern dashboard with goal projection, finance tracking, and interactive charts.
-""", unsafe_allow_html=True)
-
-# --- GOAL TRACKER ---
-st.subheader("🏦 Goal Tracker")
-goal_col1, goal_col2 = st.columns([2,1])
-
-# --- Left column: Inputs ---
-with goal_col1:
-    st.text_input("Goal Name", data.get("goal_name", "Retirement Fund"), key="goal_name")
-    st.text_input("Target Amount ($)", format_number(data.get("goal_amount", 50000)), key="goal_amount")
-    st.text_input("Current Progress ($)", format_number(data.get("current_amount", 0)), key="current_amount")
-    st.number_input("Monthly Contribution ($)", min_value=0.0, value=data.get("monthly_contributi_
+st.set_page_con
