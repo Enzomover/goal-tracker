@@ -168,4 +168,51 @@ if data["transactions"]:
 if data["transactions"]:
     st.subheader("Transactions Log")
     for t in data["transactions"]:
-        color_box = f"<span style='display:inline-block;width:20px;height:20px;background-color:{t.get('color_
+        color_box = f"<span style='display:inline-block;width:20px;height:20px;background-color:{t.get('color','#636EFA')};margin-right:10px;border-radius:3px;'></span>"
+        st.markdown(f"{color_box} **{t['type']}** | ${format_number(t['amount'])} | {t['category']} | {t['date']}", unsafe_allow_html=True)
+
+# Totals and percentages
+total_income = sum(t['amount'] for t in data["transactions"] if t['type'] == "Income")
+total_expense = sum(t['amount'] for t in data["transactions"] if t['type'] == "Expense")
+saving_percent = (total_income - total_expense) / total_income * 100 if total_income > 0 else 0
+expense_percent = (total_expense / total_income * 100) if total_income > 0 else 0
+
+st.header("Summary")
+st.write(f"**Total Income:** ${format_number(total_income)}")
+st.write(f"**Total Expense:** ${format_number(total_expense)}")
+st.write(f"**Saving %:** {saving_percent:.2f}%")
+st.write(f"**Expense % of Income:** {expense_percent:.2f}%")
+
+# Pie chart: Income vs Expense
+fig_income_expense = px.pie(
+    names=["Income", "Expense"],
+    values=[total_income, total_expense],
+    title="Income vs Expense",
+    hole=0.4
+)
+st.plotly_chart(fig_income_expense, use_container_width=True)
+
+# Pie chart: Expenses by transaction with individual colors
+expense_transactions = [t for t in data["transactions"] if t['type']=="Expense"]
+if expense_transactions:
+    df_expense = pd.DataFrame(expense_transactions)
+    df_expense['label'] = df_expense.apply(
+        lambda row: f"{row['category']} (${format_number(row['amount'])})", axis=1
+    )
+
+    fig_expense_tx = px.pie(
+        df_expense,
+        names='label',
+        values='amount',
+        title="Expenses by Transaction",
+        hole=0.4
+    )
+
+    fig_expense_tx.update_traces(
+        marker=dict(colors=df_expense['color'].tolist()),
+        hoverinfo='label+percent+value',
+        textinfo='percent+label',
+        pull=[0.05]*len(df_expense)
+    )
+
+    st.plotly_chart(fig_expense_tx, use_container_width=True)
