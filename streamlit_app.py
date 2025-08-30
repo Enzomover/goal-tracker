@@ -89,16 +89,28 @@ with goal_col2:
     # --- Display Card ---
     st.markdown(f"""
     <div style='background:#F9FAFB; padding:20px; border-radius:15px; box-shadow:0 4px 12px rgba(0,0,0,0.05);'>
-        <h3>{st.session_state.goal_name}</h3>
-        <p>🎯 Target Goal: <b>${format_number(goal_amount)}</b></p>
-        <p>💰 Current Amount: <b>${format_number(current_amount)}</b></p>
-        <p>📘 Contribution %: <b>{contrib_percent:.2f}%</b></p>
-        <p>💹 Growth %: <b>{growth_percent:.2f}%</b></p>
-        <p>🎯 Total % toward goal: <b>{total_percent:.2f}%</b></p>
-        <progress value="{total_percent}" max="100" style="width:100%; height:25px; border-radius:12px;"></progress>
-        <p>💰 Total Projected Amount: <b>${format_number(future_value)}</b></p>
+        <h3 style='margin-bottom:10px;'>{st.session_state.goal_name}</h3>
+        <p>Target Goal: <b>${format_number(goal_amount)}</b></p>
+        <p>Current Amount: <b>${format_number(current_amount)}</b></p>
+        <p>Contribution %: <b>{contrib_percent:.2f}%</b></p>
+        <p>Growth %: <b>{growth_percent:.2f}%</b></p>
+        <p>Total % toward goal: <b>{total_percent:.2f}%</b></p>
+        <p>Total Projected Amount: <b>${format_number(future_value)}</b></p>
     </div>
     """, unsafe_allow_html=True)
+
+    # Streamlit-native progress bar
+    st.progress(total_percent / 100)
+
+    # Emoji status messages
+    if total_percent >= 100:
+        st.success("🎉 Goal reached!")
+    elif total_percent >= 75:
+        st.info("🔥 Almost there!")
+    elif total_percent >= 50:
+        st.warning("💪 Halfway done!")
+    else:
+        st.write("🚀 Keep going!")
 
 if st.button("💾 Save Goal Progress"):
     data.update({
@@ -152,41 +164,4 @@ if data["transactions"]:
 total_income = sum(t['amount'] for t in data["transactions"] if t['type']=="Income")
 total_expense = sum(t['amount'] for t in data["transactions"] if t['type']=="Expense")
 saving_percent = (total_income - total_expense)/total_income*100 if total_income>0 else 0
-expense_percent = (total_expense/total_income*100) if total_income>0 else 0
-
-st.subheader("📊 Summary")
-col_income, col_expense = st.columns(2)
-with col_income:
-    st.metric("Total Income", f"${format_number(total_income)}")
-    st.metric("Total Savings %", f"{saving_percent:.2f}%")
-with col_expense:
-    st.metric("Total Expense", f"${format_number(total_expense)}")
-    st.metric("Expense % of Income", f"{expense_percent:.2f}%")
-
-# Pie charts
-fig_income_expense = px.pie(
-    names=["Income","Expense"],
-    values=[total_income,total_expense],
-    title="Income vs Expense",
-    hole=0.4
-)
-st.plotly_chart(fig_income_expense, use_container_width=True)
-
-expense_transactions = [t for t in data["transactions"] if t['type']=="Expense"]
-if expense_transactions:
-    df_exp = pd.DataFrame(expense_transactions).reset_index(drop=True)
-    df_exp['label'] = df_exp.apply(lambda r: f"{r['category']} (${format_number(r['amount'])})", axis=1)
-    fig_exp_tx = px.pie(
-        df_exp,
-        names='label',
-        values='amount',
-        title="Expenses by Transaction",
-        hole=0.4
-    )
-    fig_exp_tx.update_traces(
-        marker=dict(colors=df_exp['color']),
-        hoverinfo='label+percent+value',
-        textinfo='percent+label',
-        pull=[0.05]*len(df_exp)
-    )
-    st.plotly_chart(fig_exp_tx, use_container_width=True)
+expense_percent = (total_expense/total_income*100) if total_inc_*_
