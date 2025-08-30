@@ -86,7 +86,12 @@ st.write(f"📘 Contribution % toward goal: **{contrib_percent:.2f}%**")
 st.write(f"💹 Growth % toward goal: **{growth_percent:.2f}%**")
 st.write(f"🎯 Total % toward goal: **{total_percent:.2f}%**")
 
+# Progress bar
 st.progress(total_percent / 100)
+
+# Total projected amount in dollars
+total_projected_amount = future_value  # includes current + contributions + growth
+st.write(f"💰 **Total Projected Amount:** ${format_number(total_projected_amount)}")
 
 if total_percent >= 100:
     st.success("🎉 Goal reached!")
