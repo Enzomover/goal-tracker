@@ -25,7 +25,7 @@ def save_data(data):
         json.dump(data, f)
 
 def format_number(n):
-    return f"{n:,}"
+    return f"{n:,.2f}"
 
 def parse_input(value):
     try:
@@ -38,37 +38,61 @@ data = load_data()
 
 st.title("🎯 Goal & Finance Tracker")
 
-# --- GOAL TRACKER ---
+# --- GOAL TRACKER (Manual + Growth Projection) ---
 st.header("Goal Tracker")
 
-goal_name = st.text_input("Goal Name", data["goal_name"])
-goal_amount_input = st.text_input("Target Amount ($)", format_number(data["goal_amount"]))
+goal_name = st.text_input("Goal Name", data.get("goal_name", "Retirement Fund"))
+goal_amount_input = st.text_input("Target Amount ($)", format_number(data.get("goal_amount", 50000)))
 goal_amount = parse_input(goal_amount_input)
-current_amount_input = st.text_input("Current Progress ($)", format_number(data.get("current_amount",0)))
+current_amount_input = st.text_input("Current Progress ($)", format_number(data.get("current_amount", 0)))
 current_amount = parse_input(current_amount_input)
+
+# Projection inputs
+monthly_contribution = st.number_input("Monthly Contribution ($)", min_value=0.0, value=0.0, step=100.0)
+yearly_contribution = st.number_input("Yearly Contribution ($)", min_value=0.0, value=0.0, step=500.0)
+growth_rate = st.number_input("Expected Growth Rate (% per year)", min_value=0.0, value=5.0, step=0.1)
+years_to_project = st.number_input("Years to Project", min_value=0, value=10, step=1)
 
 # Save button
 if st.button("💾 Save Goal Progress"):
-    data["goal_name"] = goal_name
-    data["goal_amount"] = goal_amount
-    data["current_amount"] = current_amount
+    data.update({
+        "goal_name": goal_name,
+        "goal_amount": goal_amount,
+        "current_amount": current_amount,
+        "monthly_contribution": monthly_contribution,
+        "yearly_contribution": yearly_contribution,
+        "growth_rate": growth_rate,
+        "years_to_project": years_to_project
+    })
     save_data(data)
     st.success("Goal progress saved!")
 
-# --- Simple Progress Bar ---
-progress = min(current_amount / goal_amount, 1.0) if goal_amount > 0 else 0
+# --- Calculations ---
+total_contrib = (monthly_contribution * 12 + yearly_contribution) * years_to_project
+
+future_value = current_amount
+for _ in range(years_to_project):
+    future_value = (future_value + monthly_contribution * 12 + yearly_contribution) * (1 + growth_rate/100)
+
+contrib_percent = (total_contrib / goal_amount * 100) if goal_amount > 0 else 0
+growth_percent = ((future_value - current_amount - total_contrib) / goal_amount * 100) if goal_amount > 0 else 0
+total_percent = min((future_value / goal_amount) * 100, 100) if goal_amount > 0 else 0
+
+# --- Display ---
 st.subheader(f"Tracking: {goal_name}")
 st.write(f"**Target Goal:** ${format_number(goal_amount)}")
-st.write(f"**Current Progress:** ${format_number(current_amount)}")
-st.write(f"**Completion:** {progress*100:.2f}%")
+st.write(f"**Current Amount:** ${format_number(current_amount)}")
+st.write(f"📘 Contribution % toward goal: **{contrib_percent:.2f}%**")
+st.write(f"💹 Growth % toward goal: **{growth_percent:.2f}%**")
+st.write(f"🎯 Total % toward goal: **{total_percent:.2f}%**")
 
-st.progress(progress)
+st.progress(total_percent / 100)
 
-if progress >= 1:
+if total_percent >= 100:
     st.success("🎉 Goal reached!")
-elif progress >= 0.75:
+elif total_percent >= 75:
     st.info("🔥 Almost there!")
-elif progress >= 0.5:
+elif total_percent >= 50:
     st.warning("💪 Halfway done!")
 else:
     st.write("🚀 Keep going!")
@@ -135,7 +159,7 @@ if data["transactions"]:
                     save_data(data)
                     st.success("Transaction deleted!")
 
-# Display transaction log with color swatch
+# Display transaction log
 if data["transactions"]:
     st.subheader("Transactions Log")
     for t in data["transactions"]:
