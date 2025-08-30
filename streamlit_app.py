@@ -29,7 +29,6 @@ def format_number(n):
 
 def parse_input(value):
     try:
-        # Remove any non-digit or non-dot characters and convert to float
         return float(re.sub(r"[^\d.]", "", str(value)))
     except:
         return 0
@@ -75,7 +74,6 @@ with goal_col2:
     growth_rate = st.session_state.growth_rate
     years_to_project = st.session_state.years_to_project
 
-    # Monthly compounding projection
     months = years_to_project * 12
     monthly_growth_rate = (1 + growth_rate/100)**(1/12) - 1
     future_value = current_amount
@@ -87,7 +85,6 @@ with goal_col2:
     growth_percent = ((future_value - current_amount - total_contrib)/goal_amount*100) if goal_amount>0 else 0
     total_percent = min((future_value/goal_amount)*100,100) if goal_amount>0 else 0
 
-    # --- Display Card ---
     st.markdown(f"""
     <div style='background:#F9FAFB; padding:20px; border-radius:15px; box-shadow:0 4px 12px rgba(0,0,0,0.05);'>
         <h3 style='margin-bottom:10px;'>{st.session_state.goal_name}</h3>
@@ -100,10 +97,8 @@ with goal_col2:
     </div>
     """, unsafe_allow_html=True)
 
-    # Streamlit-native progress bar
     st.progress(total_percent / 100)
 
-    # Emoji status messages
     if total_percent >= 100:
         st.success("🎉 Goal reached!")
     elif total_percent >= 75:
@@ -129,7 +124,6 @@ if st.button("💾 Save Goal Progress"):
 # --- FINANCE TRACKER ---
 st.subheader("💵 Finance Tracker")
 
-# Add Transaction Form
 with st.form(key="transaction_form"):
     col1, col2, col3, col4 = st.columns([1,1,1,1])
     with col1: t_type = st.selectbox("Type", ["Income", "Expense"])
@@ -140,5 +134,19 @@ with st.form(key="transaction_form"):
     submitted = st.form_submit_button("Add Transaction")
     if submitted:
         amt = parse_input(t_amount)
-        if amt>0 and t_category:
+        if amt > 0 and t_category:
             data["transactions"].append({
+                "type": t_type,
+                "amount": amt,
+                "category": t_category,
+                "color": t_color,
+                "date": t_date.strftime("%Y-%m-%d")
+            })
+            save_data(data)
+            st.success(f"{t_type} added!")
+
+if data["transactions"]:
+    st.subheader("📋 Transactions")
+    for t in data["transactions"]:
+        st.markdown(f"""
+        <div
