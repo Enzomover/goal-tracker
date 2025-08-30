@@ -3,6 +3,8 @@ import json
 import os
 import re
 from datetime import datetime
+import pandas as pd
+import plotly.express as px
 
 # --- File to store data ---
 DATA_FILE = "finance_data.json"
@@ -15,7 +17,7 @@ def load_data():
         "goal_name": "Retirement Fund",
         "goal_amount": 50000,
         "current_amount": 0,
-        "growth_percent": 5,
+        "growth_percent": 5.0,
         "transactions": []
     }
 
@@ -24,7 +26,7 @@ def save_data(data):
         json.dump(data, f)
 
 def format_number(n):
-    return f"${n:,.2f}"
+    return f"{n:,.2f}"
 
 def parse_input(value):
     try:
@@ -35,101 +37,214 @@ def parse_input(value):
 # --- Load data ---
 data = load_data()
 
-# --- Custom CSS for polished look ---
-st.markdown("""
-<style>
-    .main {background-color:#0E1117;}
-    .stApp {background-color:#0E1117;}
-    div[data-testid="stHeader"] {background: rgba(0,0,0,0);}
-    h1, h2, h3, h4, h5, h6, p, label, span {color:#E8EAF6 !important;}
-    .card {
-        background-color:#1A1C23;
-        padding:20px;
-        border-radius:12px;
-        box-shadow:0 4px 10px rgba(0,0,0,0.3);
-        margin-bottom:20px;
-    }
-</style>
-""", unsafe_allow_html=True)
+# --- Page Config ---
+st.set_page_config(page_title="Goal & Finance Tracker", page_icon="🎯", layout="wide")
 
-st.title("🚀 Goal & Finance Tracker (2025 Edition)")
+# --- Theme Switch ---
+if "theme" not in st.session_state:
+    st.session_state.theme = "light"
 
-# --- Tabs ---
-tab1, tab2 = st.tabs(["🎯 Goal Tracker", "💵 Finance Tracker"])
+theme_choice = st.radio("🌗 Theme", ["Light", "Dark"], horizontal=True)
+st.session_state.theme = "dark" if theme_choice == "Dark" else "light"
 
-# =========================
-# 🎯 GOAL TRACKER TAB
-# =========================
+# --- Apply CSS for Dark/Light Theme ---
+if st.session_state.theme == "dark":
+    st.markdown(
+        """
+        <style>
+        body, .stApp { background-color: #0e1117; color: #fafafa; }
+        .stMetric, .stTextInput, .stSelectbox, .stNumberInput, .stDateInput {
+            background-color: #1c1f26; border-radius: 10px; padding: 10px;
+        }
+        .stButton>button {
+            background: linear-gradient(90deg, #4a90e2, #357ABD);
+            color: white; border: none; border-radius: 10px; padding: 0.6em 1em;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True
+    )
+else:
+    st.markdown(
+        """
+        <style>
+        body, .stApp { background-color: #ffffff; color: #111111; }
+        .stMetric, .stTextInput, .stSelectbox, .stNumberInput, .stDateInput {
+            background-color: #f9f9f9; border-radius: 10px; padding: 10px;
+        }
+        .stButton>button {
+            background: linear-gradient(90deg, #42e695, #3bb2b8);
+            color: white; border: none; border-radius: 10px; padding: 0.6em 1em;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True
+    )
+
+# --- Modern Layout with Tabs ---
+st.title("🎯 Goal & Finance Tracker")
+
+tab1, tab2 = st.tabs(["📊 Goal Tracker", "💰 Finance Tracker"])
+
+# --- GOAL TRACKER ---
 with tab1:
-    st.markdown("<div class='card'>", unsafe_allow_html=True)
-    st.subheader("Set Your Goal")
+    st.subheader("Your Goal")
 
-    data["goal_name"] = st.text_input("Goal Name", value=data["goal_name"])
-    data["goal_amount"] = parse_input(st.text_input("Goal Amount ($)", value=str(data["goal_amount"])))
-    data["growth_percent"] = st.number_input("Expected Yearly Growth (%)", min_value=0.0, step=0.1, value=float(data["growth_percent"]))
+    goal_name = st.text_input("Goal Name", data["goal_name"])
+    goal_amount_input = st.text_input("Target Amount ($)", format_number(data["goal_amount"]))
+    goal_amount = parse_input(goal_amount_input)
+    current_amount_input = st.text_input("Current Progress ($)", format_number(data.get("current_amount",0)))
+    current_amount = parse_input(current_amount_input)
 
-    # Calculate progress
-    current_total = data["current_amount"]
-    goal = data["goal_amount"]
-    progress = min(current_total / goal * 100, 100) if goal > 0 else 0
+    # Growth %
+    growth_percent = st.number_input(
+        "Expected Yearly Growth (%)", 
+        min_value=0.0, 
+        step=0.1, 
+        value=float(data.get("growth_percent", 5.0))
+    )
 
-    # --- Custom Progress Bar ---
-    progress_html = f"""
-    <div style='width: 100%; background: #333; border-radius: 25px;'>
-      <div style='width: {progress:.2f}%;
-                  background: linear-gradient(90deg, #2196F3, #21CBF3);
-                  height: 25px;
-                  border-radius: 25px;
-                  box-shadow: 0px 0px 10px #21CBF3;'>
-      </div>
-    </div>
-    <p style='margin-top:8px; font-weight:bold;'>{progress:.2f}% Completed</p>
-    """
-    st.markdown(progress_html, unsafe_allow_html=True)
+    # Save button
+    if st.button("💾 Save Goal Progress"):
+        data["goal_name"] = goal_name
+        data["goal_amount"] = goal_amount
+        data["current_amount"] = current_amount
+        data["growth_percent"] = growth_percent
+        save_data(data)
+        st.success("Goal progress saved!")
 
-    st.markdown(f"💰 Current Balance: **{format_number(current_total)}**")
-    st.markdown(f"🎯 Goal: **{format_number(goal)}**")
-    st.markdown(f"📈 Growth Projection: **{data['growth_percent']}% yearly**")
+    progress = min((current_amount / goal_amount) * 100, 100) if goal_amount > 0 else 0
+    st.metric(label="Completion %", value=f"{progress:.2f}%")
+    st.progress(progress / 100)
 
-    st.markdown("</div>", unsafe_allow_html=True)
+    st.write(f"**Target Goal:** ${format_number(goal_amount)}")
+    st.write(f"**Current Progress:** ${format_number(current_amount)}")
+    st.write(f"**Growth Projection (Yearly):** {growth_percent:.2f}%")
 
-    save_data(data)
+    if progress >= 100:
+        st.success("🎉 Goal reached!")
+    elif progress >= 75:
+        st.info("🔥 Almost there!")
+    elif progress >= 50:
+        st.warning("💪 Halfway done!")
+    else:
+        st.write("🚀 Keep going!")
 
-# =========================
-# 💵 FINANCE TRACKER TAB
-# =========================
+# --- FINANCE TRACKER ---
 with tab2:
-    st.markdown("<div class='card'>", unsafe_allow_html=True)
-    st.subheader("Manage Transactions")
+    st.subheader("Transactions")
 
+    # Add Transaction
+    with st.form(key="transaction_form"):
+        t_type = st.selectbox("Transaction Type", ["Income", "Expense"])
+        t_amount = st.text_input("Amount ($)")
+        t_category = st.text_input("Category (e.g., Food, Salary, Bills)")
+        t_color = st.color_picker("Choose a color for this transaction", "#636EFA")
+        t_date = st.date_input("Transaction Date")
+        submitted = st.form_submit_button("Add Transaction")
+
+        if submitted:
+            amount = parse_input(t_amount)
+            if amount > 0 and t_category:
+                data["transactions"].append({
+                    "type": t_type,
+                    "amount": amount,
+                    "category": t_category,
+                    "color": t_color,
+                    "date": t_date.strftime("%Y-%m-%d")
+                })
+                save_data(data)
+                st.success(f"{t_type} added!")
+            else:
+                st.error("Please enter a valid amount and category.")
+
+    # Manage Transactions
+    if data["transactions"]:
+        st.write("### Manage Transactions")
+        for idx, t in enumerate(data["transactions"].copy()):
+            with st.expander(f"{t['type']} | ${format_number(t['amount'])} | {t['category']} | {t['date']}"):
+                new_type = st.selectbox("Transaction Type", ["Income", "Expense"],
+                                        index=0 if t['type']=="Income" else 1, key=f"type_{idx}")
+                new_amount = st.text_input("Amount ($)", format_number(t['amount']), key=f"amount_{idx}")
+                new_category = st.text_input("Category", t['category'], key=f"category_{idx}")
+                new_color = st.color_picker("Choose color", t.get('color', "#636EFA"), key=f"color_{idx}")
+                new_date = st.date_input("Transaction Date",
+                                        datetime.strptime(t['date'].split()[0], "%Y-%m-%d"),
+                                        key=f"date_{idx}")
+
+                col1, col2 = st.columns(2)
+                with col1:
+                    if st.button("Update", key=f"update_{idx}"):
+                        amt_val = parse_input(new_amount)
+                        if amt_val > 0 and new_category:
+                            data["transactions"][idx] = {
+                                "type": new_type,
+                                "amount": amt_val,
+                                "category": new_category,
+                                "color": new_color,
+                                "date": new_date.strftime("%Y-%m-%d")
+                            }
+                            save_data(data)
+                            st.success("Transaction updated!")
+
+                with col2:
+                    if st.button("Delete", key=f"delete_{idx}"):
+                        data["transactions"].pop(idx)
+                        save_data(data)
+                        st.success("Transaction deleted!")
+
+    # Display transaction log with color swatch
+    if data["transactions"]:
+        st.subheader("Transactions Log")
+        for t in data["transactions"]:
+            color_box = f"<span style='display:inline-block;width:20px;height:20px;background-color:{t.get('color','#636EFA')};margin-right:10px;border-radius:3px;'></span>"
+            st.markdown(f"{color_box} **{t['type']}** | ${format_number(t['amount'])} | {t['category']} | {t['date']}", unsafe_allow_html=True)
+
+    # Totals and percentages
+    total_income = sum(t['amount'] for t in data["transactions"] if t['type'] == "Income")
+    total_expense = sum(t['amount'] for t in data["transactions"] if t['type'] == "Expense")
+    saving_percent = (total_income - total_expense) / total_income * 100 if total_income > 0 else 0
+    expense_percent = (total_expense / total_income * 100) if total_income > 0 else 0
+
+    st.header("Summary")
     col1, col2 = st.columns(2)
     with col1:
-        amount = st.text_input("Amount ($)")
+        st.metric("Total Income", f"${format_number(total_income)}")
+        st.metric("Saving %", f"{saving_percent:.2f}%")
     with col2:
-        tx_type = st.selectbox("Type", ["Income", "Expense"])
+        st.metric("Total Expense", f"${format_number(total_expense)}")
+        st.metric("Expense % of Income", f"{expense_percent:.2f}%")
 
-    if st.button("➕ Add Transaction"):
-        amt = parse_input(amount)
-        if amt > 0:
-            if tx_type == "Income":
-                data["current_amount"] += amt
-            else:
-                data["current_amount"] -= amt
+    # Pie chart: Income vs Expense
+    fig_income_expense = px.pie(
+        names=["Income", "Expense"],
+        values=[total_income, total_expense],
+        title="Income vs Expense",
+        hole=0.4
+    )
+    st.plotly_chart(fig_income_expense, use_container_width=True)
 
-            data["transactions"].append({
-                "amount": amt if tx_type == "Income" else -amt,
-                "type": tx_type,
-                "date": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            })
-            save_data(data)
-            st.success("Transaction added!")
+    # Pie chart: Expenses by transaction with individual colors
+    expense_transactions = [t for t in data["transactions"] if t['type']=="Expense"]
+    if expense_transactions:
+        df_expense = pd.DataFrame(expense_transactions)
+        df_expense['label'] = df_expense.apply(
+            lambda row: f"{row['category']} (${format_number(row['amount'])})", axis=1
+        )
 
-    st.markdown("### 📜 Transaction Log")
-    if data["transactions"]:
-        for tx in reversed(data["transactions"][-10:]):  # show last 10
-            color = "🟢" if tx["amount"] > 0 else "🔴"
-            st.write(f"{color} {tx['date']} | {tx['type']} | {format_number(tx['amount'])}")
-    else:
-        st.info("No transactions yet.")
+        fig_expense_tx = px.pie(
+            df_expense,
+            names='label',
+            values='amount',
+            title="Expenses by Transaction",
+            hole=0.4
+        )
 
-    st.markdown("</div>", unsafe_allow_html=True)
+        fig_expense_tx.update_traces(
+            marker=dict(colors=df_expense['color'].tolist()),
+            hoverinfo='label+percent+value',
+            textinfo='percent+label',
+            pull=[0.05]*len(df_expense)
+        )
+
+        st.plotly_chart(fig_expense_tx, use_container_width=True)
