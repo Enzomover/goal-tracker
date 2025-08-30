@@ -36,183 +36,157 @@ def parse_input(value):
 # --- Load data ---
 data = load_data()
 
-st.title("🎯 Goal & Finance Tracker")
+# --- Page Config ---
+st.set_page_config(
+    page_title="🎯 Goal & Finance Tracker",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
 
-# --- GOAL TRACKER (Manual + Growth Projection) ---
-st.header("Goal Tracker")
+# --- Page Header ---
+st.markdown("""
+# 🎯 Goal & Finance Tracker
+Modern dashboard with goal projection, finance tracking, and interactive charts.
+<style>
+h1 { font-size: 3rem; color: #1F2937; font-weight: 700; }
+</style>
+""", unsafe_allow_html=True)
 
-goal_name = st.text_input("Goal Name", data.get("goal_name", "Retirement Fund"))
-goal_amount_input = st.text_input("Target Amount ($)", format_number(data.get("goal_amount", 50000)))
-goal_amount = parse_input(goal_amount_input)
-current_amount_input = st.text_input("Current Progress ($)", format_number(data.get("current_amount", 0)))
-current_amount = parse_input(current_amount_input)
+# --- GOAL TRACKER ---
+st.subheader("🏦 Goal Tracker")
+goal_col1, goal_col2 = st.columns([2,1])
 
-# Projection inputs
-monthly_contribution = st.number_input("Monthly Contribution ($)", min_value=0.0, value=0.0, step=100.0)
-yearly_contribution = st.number_input("Yearly Contribution ($)", min_value=0.0, value=0.0, step=500.0)
-growth_rate = st.number_input("Expected Growth Rate (% per year)", min_value=0.0, value=5.0, step=0.1)
-years_to_project = st.number_input("Years to Project", min_value=0, value=10, step=1)
+with goal_col1:
+    st.text_input("Goal Name", data.get("goal_name", "Retirement Fund"), key="goal_name")
+    st.text_input("Target Amount ($)", format_number(data.get("goal_amount", 50000)), key="goal_amount")
+    st.text_input("Current Progress ($)", format_number(data.get("current_amount", 0)), key="current_amount")
+    st.number_input("Monthly Contribution ($)", min_value=0.0, value=data.get("monthly_contribution",0.0), step=100.0, key="monthly_contribution")
+    st.number_input("Yearly Contribution ($)", min_value=0.0, value=data.get("yearly_contribution",0.0), step=500.0, key="yearly_contribution")
+    st.number_input("Expected Growth Rate (% per year)", min_value=0.0, value=data.get("growth_rate",5.0), step=0.1, key="growth_rate")
+    st.number_input("Years to Project", min_value=0, value=data.get("years_to_project",10), step=1, key="years_to_project")
 
-# Save button
+with goal_col2:
+    # --- Calculations ---
+    goal_amount = parse_input(st.session_state.goal_amount)
+    current_amount = parse_input(st.session_state.current_amount)
+    monthly_contribution = st.session_state.monthly_contribution
+    yearly_contribution = st.session_state.yearly_contribution
+    growth_rate = st.session_state.growth_rate
+    years_to_project = st.session_state.years_to_project
+
+    # Monthly compounding projection
+    months = years_to_project * 12
+    monthly_growth_rate = (1 + growth_rate/100)**(1/12) - 1
+    future_value = current_amount
+    for _ in range(months):
+        future_value = (future_value + monthly_contribution + yearly_contribution/12) * (1 + monthly_growth_rate)
+
+    total_contrib = (monthly_contribution*12 + yearly_contribution) * years_to_project
+    contrib_percent = (total_contrib / goal_amount * 100) if goal_amount>0 else 0
+    growth_percent = ((future_value - current_amount - total_contrib)/goal_amount*100) if goal_amount>0 else 0
+    total_percent = min((future_value/goal_amount)*100,100) if goal_amount>0 else 0
+
+    # --- Display Card ---
+    st.markdown(f"""
+    <div style='background:#F9FAFB; padding:20px; border-radius:15px; box-shadow:0 4px 12px rgba(0,0,0,0.05);'>
+        <h3>{st.session_state.goal_name}</h3>
+        <p>🎯 Target Goal: <b>${format_number(goal_amount)}</b></p>
+        <p>💰 Current Amount: <b>${format_number(current_amount)}</b></p>
+        <p>📘 Contribution %: <b>{contrib_percent:.2f}%</b></p>
+        <p>💹 Growth %: <b>{growth_percent:.2f}%</b></p>
+        <p>🎯 Total % toward goal: <b>{total_percent:.2f}%</b></p>
+        <progress value="{total_percent}" max="100" style="width:100%; height:25px; border-radius:12px;"></progress>
+        <p>💰 Total Projected Amount: <b>${format_number(future_value)}</b></p>
+    </div>
+    """, unsafe_allow_html=True)
+
 if st.button("💾 Save Goal Progress"):
     data.update({
-        "goal_name": goal_name,
-        "goal_amount": goal_amount,
-        "current_amount": current_amount,
-        "monthly_contribution": monthly_contribution,
-        "yearly_contribution": yearly_contribution,
-        "growth_rate": growth_rate,
-        "years_to_project": years_to_project
+        "goal_name": st.session_state.goal_name,
+        "goal_amount": parse_input(st.session_state.goal_amount),
+        "current_amount": parse_input(st.session_state.current_amount),
+        "monthly_contribution": st.session_state.monthly_contribution,
+        "yearly_contribution": st.session_state.yearly_contribution,
+        "growth_rate": st.session_state.growth_rate,
+        "years_to_project": st.session_state.years_to_project
     })
     save_data(data)
     st.success("Goal progress saved!")
 
-# --- Calculations ---
-total_contrib = (monthly_contribution * 12 + yearly_contribution) * years_to_project
-
-future_value = current_amount
-for _ in range(years_to_project):
-    future_value = (future_value + monthly_contribution * 12 + yearly_contribution) * (1 + growth_rate/100)
-
-contrib_percent = (total_contrib / goal_amount * 100) if goal_amount > 0 else 0
-growth_percent = ((future_value - current_amount - total_contrib) / goal_amount * 100) if goal_amount > 0 else 0
-total_percent = min((future_value / goal_amount) * 100, 100) if goal_amount > 0 else 0
-
-# --- Display ---
-st.subheader(f"Tracking: {goal_name}")
-st.write(f"**Target Goal:** ${format_number(goal_amount)}")
-st.write(f"**Current Amount:** ${format_number(current_amount)}")
-st.write(f"📘 Contribution % toward goal: **{contrib_percent:.2f}%**")
-st.write(f"💹 Growth % toward goal: **{growth_percent:.2f}%**")
-st.write(f"🎯 Total % toward goal: **{total_percent:.2f}%**")
-
-# Progress bar
-st.progress(total_percent / 100)
-
-# Total projected amount in dollars
-total_projected_amount = future_value  # includes current + contributions + growth
-st.write(f"💰 **Total Projected Amount:** ${format_number(total_projected_amount)}")
-
-if total_percent >= 100:
-    st.success("🎉 Goal reached!")
-elif total_percent >= 75:
-    st.info("🔥 Almost there!")
-elif total_percent >= 50:
-    st.warning("💪 Halfway done!")
-else:
-    st.write("🚀 Keep going!")
-
 # --- FINANCE TRACKER ---
-st.header("Finance Tracker")
+st.subheader("💵 Finance Tracker")
 
-# Add Transaction
+# Add Transaction Form
 with st.form(key="transaction_form"):
-    t_type = st.selectbox("Transaction Type", ["Income", "Expense"])
-    t_amount = st.text_input("Amount ($)")
-    t_category = st.text_input("Category (e.g., Food, Salary, Bills)")
-    t_color = st.color_picker("Choose a color for this transaction", "#636EFA")
-    t_date = st.date_input("Transaction Date")
+    col1, col2, col3, col4 = st.columns([1,1,1,1])
+    with col1: t_type = st.selectbox("Type", ["Income", "Expense"])
+    with col2: t_amount = st.text_input("Amount ($)")
+    with col3: t_category = st.text_input("Category")
+    with col4: t_color = st.color_picker("Color", "#636EFA")
+    t_date = st.date_input("Date")
     submitted = st.form_submit_button("Add Transaction")
-
     if submitted:
-        amount = parse_input(t_amount)
-        if amount > 0 and t_category:
+        amt = parse_input(t_amount)
+        if amt>0 and t_category:
             data["transactions"].append({
                 "type": t_type,
-                "amount": amount,
+                "amount": amt,
                 "category": t_category,
                 "color": t_color,
                 "date": t_date.strftime("%Y-%m-%d")
             })
             save_data(data)
             st.success(f"{t_type} added!")
-        else:
-            st.error("Please enter a valid amount and category.")
 
-# Manage Transactions
+# Display Transactions with Modern Cards
 if data["transactions"]:
-    st.header("Manage Transactions")
-    for idx, t in enumerate(data["transactions"].copy()):
-        with st.expander(f"{t['type']} | ${format_number(t['amount'])} | {t['category']} | {t['date']}"):
-            new_type = st.selectbox("Transaction Type", ["Income", "Expense"],
-                                    index=0 if t['type']=="Income" else 1, key=f"type_{idx}")
-            new_amount = st.text_input("Amount ($)", format_number(t['amount']), key=f"amount_{idx}")
-            new_category = st.text_input("Category", t['category'], key=f"category_{idx}")
-            new_color = st.color_picker("Choose color", t.get('color', "#636EFA"), key=f"color_{idx}")
-            new_date = st.date_input("Transaction Date",
-                                     datetime.strptime(t['date'].split()[0], "%Y-%m-%d"),
-                                     key=f"date_{idx}")
-
-            col1, col2 = st.columns(2)
-            with col1:
-                if st.button("Update", key=f"update_{idx}"):
-                    amt_val = parse_input(new_amount)
-                    if amt_val > 0 and new_category:
-                        data["transactions"][idx] = {
-                            "type": new_type,
-                            "amount": amt_val,
-                            "category": new_category,
-                            "color": new_color,
-                            "date": new_date.strftime("%Y-%m-%d")
-                        }
-                        save_data(data)
-                        st.success("Transaction updated!")
-
-            with col2:
-                if st.button("Delete", key=f"delete_{idx}"):
-                    data["transactions"].pop(idx)
-                    save_data(data)
-                    st.success("Transaction deleted!")
-
-# Display transaction log
-if data["transactions"]:
-    st.subheader("Transactions Log")
+    st.subheader("📋 Transactions")
     for t in data["transactions"]:
-        color_box = f"<span style='display:inline-block;width:20px;height:20px;background-color:{t.get('color','#636EFA')};margin-right:10px;border-radius:3px;'></span>"
-        st.markdown(f"{color_box} **{t['type']}** | ${format_number(t['amount'])} | {t['category']} | {t['date']}", unsafe_allow_html=True)
+        st.markdown(f"""
+        <div style='background:{t.get('color','#F3F4F6')}; padding:15px; border-radius:10px; margin-bottom:8px; box-shadow:0 2px 8px rgba(0,0,0,0.05);'>
+            <b>{t['type']}</b> | ${format_number(t['amount'])} | {t['category']} | {t['date']}
+        </div>
+        """, unsafe_allow_html=True)
 
-# Totals and percentages
-total_income = sum(t['amount'] for t in data["transactions"] if t['type'] == "Income")
-total_expense = sum(t['amount'] for t in data["transactions"] if t['type'] == "Expense")
-saving_percent = (total_income - total_expense) / total_income * 100 if total_income > 0 else 0
-expense_percent = (total_expense / total_income * 100) if total_income > 0 else 0
+# Totals and Charts
+total_income = sum(t['amount'] for t in data["transactions"] if t['type']=="Income")
+total_expense = sum(t['amount'] for t in data["transactions"] if t['type']=="Expense")
+saving_percent = (total_income - total_expense)/total_income*100 if total_income>0 else 0
+expense_percent = (total_expense/total_income*100) if total_income>0 else 0
 
-st.header("Summary")
-st.write(f"**Total Income:** ${format_number(total_income)}")
-st.write(f"**Total Expense:** ${format_number(total_expense)}")
-st.write(f"**Saving %:** {saving_percent:.2f}%")
-st.write(f"**Expense % of Income:** {expense_percent:.2f}%")
+st.subheader("📊 Summary")
+col_income, col_expense = st.columns(2)
+with col_income:
+    st.metric("Total Income", f"${format_number(total_income)}")
+    st.metric("Total Savings %", f"{saving_percent:.2f}%")
+with col_expense:
+    st.metric("Total Expense", f"${format_number(total_expense)}")
+    st.metric("Expense % of Income", f"{expense_percent:.2f}%")
 
-# Pie chart: Income vs Expense
+# Pie charts
 fig_income_expense = px.pie(
-    names=["Income", "Expense"],
-    values=[total_income, total_expense],
+    names=["Income","Expense"],
+    values=[total_income,total_expense],
     title="Income vs Expense",
     hole=0.4
 )
 st.plotly_chart(fig_income_expense, use_container_width=True)
 
-# Pie chart: Expenses by transaction with individual colors
 expense_transactions = [t for t in data["transactions"] if t['type']=="Expense"]
 if expense_transactions:
-    df_expense = pd.DataFrame(expense_transactions)
-    df_expense['label'] = df_expense.apply(
-        lambda row: f"{row['category']} (${format_number(row['amount'])})", axis=1
-    )
-
-    fig_expense_tx = px.pie(
-        df_expense,
+    df_exp = pd.DataFrame(expense_transactions).reset_index(drop=True)
+    df_exp['label'] = df_exp.apply(lambda r: f"{r['category']} (${format_number(r['amount'])})", axis=1)
+    fig_exp_tx = px.pie(
+        df_exp,
         names='label',
         values='amount',
         title="Expenses by Transaction",
         hole=0.4
     )
-
-    fig_expense_tx.update_traces(
-        marker=dict(colors=df_expense['color'].tolist()),
+    fig_exp_tx.update_traces(
+        marker=dict(colors=df_exp['color']),
         hoverinfo='label+percent+value',
         textinfo='percent+label',
-        pull=[0.05]*len(df_expense)
+        pull=[0.05]*len(df_exp)
     )
-
-    st.plotly_chart(fig_expense_tx, use_container_width=True)
+    st.plotly_chart(fig_exp_tx, use_container_width=True)
