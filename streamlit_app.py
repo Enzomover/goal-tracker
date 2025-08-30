@@ -56,6 +56,7 @@ h1 { font-size: 3rem; color: #1F2937; font-weight: 700; }
 st.subheader("🏦 Goal Tracker")
 goal_col1, goal_col2 = st.columns([2,1])
 
+# --- Left column: inputs ---
 with goal_col1:
     st.text_input("Goal Name", data.get("goal_name", "Retirement Fund"), key="goal_name")
     st.text_input("Target Amount ($)", format_number(data.get("goal_amount", 50000)), key="goal_amount")
@@ -65,31 +66,35 @@ with goal_col1:
     st.number_input("Expected Growth Rate (% per year)", min_value=0.0, value=data.get("growth_rate",5.0), step=0.1, key="growth_rate")
     st.number_input("Years to Project", min_value=0, value=data.get("years_to_project",10), step=1, key="years_to_project")
 
+# --- Right column: card display ---
 with goal_col2:
-    # --- Calculations ---
-    goal_amount = parse_input(st.session_state.goal_amount)
-    current_amount = parse_input(st.session_state.current_amount)
+    # Safe variables for display
+    display_goal_name = st.session_state.get("goal_name", data.get("goal_name", "Retirement Fund"))
+    display_goal_amount = parse_input(st.session_state.get("goal_amount", data.get("goal_amount", 50000)))
+    display_current_amount = parse_input(st.session_state.get("current_amount", data.get("current_amount", 0)))
     monthly_contribution = st.session_state.monthly_contribution
     yearly_contribution = st.session_state.yearly_contribution
     growth_rate = st.session_state.growth_rate
     years_to_project = st.session_state.years_to_project
 
+    # --- Calculations ---
     months = years_to_project * 12
     monthly_growth_rate = (1 + growth_rate/100)**(1/12) - 1
-    future_value = current_amount
+    future_value = display_current_amount
     for _ in range(months):
         future_value = (future_value + monthly_contribution + yearly_contribution/12) * (1 + monthly_growth_rate)
 
     total_contrib = (monthly_contribution*12 + yearly_contribution) * years_to_project
-    contrib_percent = (total_contrib / goal_amount * 100) if goal_amount>0 else 0
-    growth_percent = ((future_value - current_amount - total_contrib)/goal_amount*100) if goal_amount>0 else 0
-    total_percent = min((future_value/goal_amount)*100,100) if goal_amount>0 else 0
+    contrib_percent = (total_contrib / display_goal_amount * 100) if display_goal_amount>0 else 0
+    growth_percent = ((future_value - display_current_amount - total_contrib)/display_goal_amount*100) if display_goal_amount>0 else 0
+    total_percent = min((future_value/display_goal_amount)*100,100) if display_goal_amount>0 else 0
 
+    # --- Card Display ---
     st.markdown(f"""
-<div style='background:#F9FAFB; padding:20px; border-radius:15px; box-shadow:0 4px 12px rgba(0,0,0,0.05);'>
-    <h3 style='margin-bottom:10px;'>{st.session_state.goal_name}</h3>
-    <p>Target Goal: <b>${format_number(goal_amount)}</b></p>
-    <p>Current Amount: <b>${format_number(current_amount)}</b></p>
+<div style='background:#FFFFFF; padding:25px; border-radius:15px; box-shadow:0 8px 20px rgba(0,0,0,0.1);'>
+    <h3 style='margin-bottom:10px; color:#111827'>{display_goal_name}</h3>
+    <p>Target Goal: <b>${format_number(display_goal_amount)}</b></p>
+    <p>Current Amount: <b>${format_number(display_current_amount)}</b></p>
     <p>Contribution %: <b>{contrib_percent:.2f}%</b></p>
     <p>Growth %: <b>{growth_percent:.2f}%</b></p>
     <p>Total % toward goal: <b>{total_percent:.2f}%</b></p>
@@ -97,8 +102,10 @@ with goal_col2:
 </div>
 """, unsafe_allow_html=True)
 
+    # Progress bar
     st.progress(total_percent / 100)
 
+    # Goal status
     if total_percent >= 100:
         st.success("🎉 Goal reached!")
     elif total_percent >= 75:
@@ -108,6 +115,7 @@ with goal_col2:
     else:
         st.write("🚀 Keep going!")
 
+# --- Save Goal ---
 if st.button("💾 Save Goal Progress"):
     data.update({
         "goal_name": st.session_state.goal_name,
@@ -150,50 +158,4 @@ if data["transactions"]:
     for t in data["transactions"]:
         st.markdown(f"""
 <div style='background:{t.get('color','#F3F4F6')}; padding:15px; border-radius:10px; margin-bottom:8px; box-shadow:0 2px 8px rgba(0,0,0,0.05);'>
-    <b>{t['type']}</b> | ${format_number(t['amount'])} | {t['category']} | {t['date']}
-</div>
-""", unsafe_allow_html=True)
-
-total_income = sum(t['amount'] for t in data["transactions"] if t['type']=="Income")
-total_expense = sum(t['amount'] for t in data["transactions"] if t['type']=="Expense")
-saving_percent = (total_income - total_expense)/total_income*100 if total_income>0 else 0
-expense_percent = (total_expense / total_income * 100) if total_income>0 else 0
-
-st.subheader("📊 Summary")
-col_income, col_expense = st.columns(2)
-with col_income:
-    st.metric("Total Income", f"${format_number(total_income)}")
-    st.metric("Total Savings %", f"{saving_percent:.2f}%")
-with col_expense:
-    st.metric("Total Expense", f"${format_number(total_expense)}")
-    st.metric("Expense % of Income", f"{expense_percent:.2f}%")
-
-fig_income_expense = px.pie(
-    names=["Income","Expense"],
-    values=[total_income,total_expense],
-    title="Income vs Expense",
-    hole=0.4
-)
-st.plotly_chart(fig_income_expense, use_container_width=True)
-
-expense_transactions = [t for t in data["transactions"] if t['type']=="Expense"]
-if expense_transactions:
-    df_exp = pd.DataFrame(expense_transactions).reset_index(drop=True)
-    df_exp['label'] = df_exp.apply(
-        lambda r: f"{r['category']} (${format_number(r['amount'])})",
-        axis=1
-    )
-    fig_exp_tx = px.pie(
-        df_exp,
-        names='label',
-        values='amount',
-        title="Expenses by Transaction",
-        hole=0.4
-    )
-    fig_exp_tx.update_traces(
-        marker=dict(colors=df_exp['color']),
-        hoverinfo='label+percent+value',
-        textinfo='percent+label',
-        pull=[0.05]*len(df_exp)
-    )
-    st.plotly_chart(fig_exp_tx, use_container_width=True)
+    <b>{t['type']}
